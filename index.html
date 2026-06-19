@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Classic Games Hub</title>
+<link rel="manifest" href="manifest.json">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+<h1 id="appTitle">Classic Games Hub</h1>
+<button id="profileButton" onclick="showProfileDrawer()">
+  👤 Profile
+</button>
+<button id="settingsButton" onclick="showSettings()">
+Settings
+</button>
+<div class="menu-divider"></div>
+</div>
+
+<div id="profileOverlay" class="profile-overlay hidden" onclick="hideProfileDrawer()">
+
+  <div id="profileDrawer" class="profile-drawer" onclick="event.stopPropagation()">
+
+    <h2>Profile</h2>
+
+    <div id="drawerProfileName">
+  Current Profile: Player 1
+</div>
+<div id="profileSummary">
+  Games Played: 0<br>
+  Favorite Game: None
+</div>
+
+<h3>Profiles</h3>
+
+<div id="profileList" class="profile-list"></div>
+
+<h3>New Profile</h3>
+
+<input id="drawerProfileInput" placeholder="Profile name" />
+
+<button onclick="createProfileFromDrawer()">
+  Create Profile
+</button>
+
+    <button onclick="openStatisticsFromProfile()">
+  View Statistics
+</button>
+
+    <button onclick="hideProfileDrawer()">
+      Close
+    </button>
+
+  </div>
+</div>
+<div id="settingsOverlay" class="settings-overlay hidden">
+<div id="settingsPanel" class="settings-panel">
+<h2>Settings</h2>
+<h3>Statistics</h3>
+<button onclick="resetAllScores()">
+Reset All Scores
+</button>
+<h3>Appearance</h3>
+<div class="theme-dropdown">
+  <button onclick="toggleThemeMenu()">
+    Themes ▼
+  </button>
+
+  <div id="themeMenu" class="theme-menu">
+    <button onclick="setTheme('dark')">Dark</button>
+    <button onclick="setTheme('neon')">Neon</button>
+    <button onclick="setTheme('retro')">Retro</button>
+  </div>
+</div>
+<h3>Sound</h3>
+<button onclick="toggleSound()" id="soundToggle">
+Sound: On
+</button>
+
+<br><br>
+
+<button onclick="hideSettings()">Close</button>
+<br><br>
+</div>
+</div>
+<div class="menu">
+<div class="game-grid">
+  <div class="game-card" onclick="startGame('tic')"><h2>Tic-Tac-Toe </h2>Classic Tic-Tac-Toe</div>
+  <div class="game-card" onclick="startGame('connect4')"><h2>Connect Four</h2> Drop pieces and connect four</div>
+  <div class="game-card" onclick="startGame('checkers')"><h2>Checkers</h2> Capture, King, and Conquer</div>
+  <div class="game-card" onclick="startGame('chess')"><h2>Chess</h2> Checkmate to win</div>
+</div>
+
+</div>
+<button id="backButton" onclick="showMenu()">
+Back to Menu
+</button>
+<div id="gameArea"></div>
+</div>
+<div id="promotionOverlay" class="promotion-overlay hidden">
+  <div class="promotion-box">
+    <h3>Promote Pawn</h3>
+
+    <div id="promotionChoices" class="promotion-choices"></div>
+  </div>
+
+<script src="state.js"></script>
+<script src="ui.js"></script>
+<script src="games.js"></script>
+<script src="script.js"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("service-worker.js");
+  }
+</script>
+</body>
+</html>
