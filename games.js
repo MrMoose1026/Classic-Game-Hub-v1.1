@@ -1679,12 +1679,12 @@ function loadChess() {
     <div class="chess-side-panel captured-panel">
      <div>
       <h4>Captured</h4>
-      <div id="capturedWhite" class="captured-section captured-piece"></div>
+      <div id="capturedWhite" class="captured-section"></div>
     </div>
      
     <div class="captured-spacer"></div>
     
-    <div id="capturedBlack" class="captured-section captured-piece"></div>
+    <div id="capturedBlack" class="captured-section"></div>
   </div>
 
   <div class="chess-center">
@@ -1720,6 +1720,9 @@ function loadChess() {
 }
 
 function initializeChess() {
+  chessMoveHistory = []; 
+  capturedBlack = [];
+  capturedWhite = [];
   chessBoard = [
     [
       { type: "rook", color: "black", hasMoved: false },

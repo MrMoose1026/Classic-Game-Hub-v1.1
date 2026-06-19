@@ -648,10 +648,17 @@ color: #2b2b2b;
 }
 @media (max-width: 650px) {
   .game-grid {
-    grid-template-columns: 1fr;
     max-width: 90%;
     gap: 24px;
-    margin-top: 30px;
+    margin-top: 60px;
+  }
+
+  .game-card h2 {
+    font-size: 24px;
+  }
+
+  .game-card p {
+    font-size: 18px;
   }
 }
 .menu-divider {
@@ -878,9 +885,11 @@ color: #2b2b2b;
 
 .captured-section {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   gap: 4px;
   justify-content: center;
+  align-content: flex-start;
   min-height: 40px;
 }
 
@@ -888,6 +897,7 @@ color: #2b2b2b;
   display: grid;
   grid-template-rows: auto 1fr auto;
   height: 100%;
+  min-width: 80px;
 }
 
 #capturedWhite {
@@ -905,4 +915,5 @@ color: #2b2b2b;
 .captured-piece {
   width: 22px;
   height: 26px;
+  flex: 0 0 auto;
 }

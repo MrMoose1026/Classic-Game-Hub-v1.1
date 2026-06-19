@@ -641,7 +641,7 @@ function selectDifficulty(difficulty) {
 function launchPendingGame() {
 
 if (pendingGame === "tic") {
-  loadTloadTicTacToe();
+  loadTicTacToe();
 } else if (pendingGame === "connect4") {
   loadConnectFour();
 } else if (pendingGame === "checkers") {
