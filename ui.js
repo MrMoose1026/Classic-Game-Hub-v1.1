@@ -77,9 +77,12 @@ function createOrSwitchProfile() {
 
  input.value = "";
 }
+
 function showProfileDrawer() {
   document.getElementById("profileOverlay")
     .classList.remove("hidden");
+
+  document.body.classList.add("overlay-open");
 
   updateDrawerProfileDisplay();
   renderProfileList();
@@ -98,8 +101,11 @@ function hideProfileDrawer() {
   setTimeout(() => {
     overlay.classList.add("hidden");
     drawer.classList.remove("closing");
+
+    document.body.classList.remove("overlay-open");
   }, 300);
 }
+
 function updateDrawerProfileDisplay() {
   const display =
     document.getElementById("drawerProfileName");
@@ -677,14 +683,19 @@ showAppTitle();
 
 //SYSTEM SETTINGS
 function showSettings() {
- document.getElementById("settingsOverlay")
- .classList.remove("hidden");
-updateProfileDisplay();
+  document.getElementById("settingsOverlay")
+    .classList.remove("hidden");
+
+  document.body.classList.add("overlay-open");
+
+  updateProfileDisplay();
 }
 
 function hideSettings() {
- document.getElementById("settingsOverlay")
- .classList.add("hidden");
+  document.getElementById("settingsOverlay")
+    .classList.add("hidden");
+
+  document.body.classList.remove("overlay-open");
 }
 
 function toggleSound() {
