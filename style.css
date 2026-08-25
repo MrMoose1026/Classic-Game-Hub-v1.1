@@ -133,7 +133,8 @@ box-shadow: 0 0 20px #4cd137;
 }
 
 .game-card {
-    width: 95%;
+    width: 100%;
+    box-sizing: border-box;
     min-height: 160px;
     display: flex;
     flex-direction: column;
@@ -584,7 +585,6 @@ color: #2b2b2b;
     max-width: 90%;
     gap: 24px;
     margin-top: 30px;
-    justify-content: center;
   }
 }
 
