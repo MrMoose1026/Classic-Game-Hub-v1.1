@@ -1,3 +1,4 @@
+let confirmationAction = null;
 const clickSound = new Audio("img/click.mp3");
 const winSound = new Audio("img/win.mp3");
 const dropSound = new Audio("img/drop.mp3");
@@ -32,13 +33,132 @@ function playQuietBlockSound() {
 }
 
 //PROFILE MANAGEMENT
+function showProfileView(viewId) {
+  document.querySelectorAll(".profile-view").forEach(view => {
+    view.classList.add("hidden");
+  });
+
+  document.getElementById(viewId).classList.remove("hidden");
+}
+
+function updateProfileButton() {
+  const profileButton =
+    document.getElementById("profileButton");
+
+  if (profileButton) {
+    profileButton.textContent =
+      getProfileDisplayName();
+  }
+}
+
+function getProfileDisplayName() {
+  return `${profiles[currentProfile].avatar} ${currentProfile}`;
+}
+
+function getShortProfileName() {
+  return `${currentProfile}`;
+}
+
+function getEditProfileName() {
+     document.getElementById("editProfileName").textContent = 
+     `${getShortProfileName()}`;
+}
+
+function selectAvatar(avatar) {
+  selectedAvatar = avatar;
+
+  document.querySelectorAll(".avatar-option")
+    .forEach(button => {
+      button.classList.toggle(
+        "selected-avatar",
+        button.dataset.avatar === avatar
+      );
+    });
+}
+
+function initializeAvatarPicker() {
+  document.querySelectorAll(".avatar-option")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        selectAvatar(button.dataset.avatar);
+      });
+    });
+
+  selectAvatar(selectedAvatar);
+}
+
+function openEditProfile() {
+  const profile = profiles[currentProfile];
+
+  document.getElementById("editProfileInput").value = currentProfile;
+
+  editSelectedAvatar = profile.avatar;
+
+  document.querySelectorAll("#editProfileView .avatar-option")
+    .forEach(button => {
+      button.classList.toggle(
+        "selected-avatar",
+        button.dataset.avatar === editSelectedAvatar
+      );
+    });
+
+  showProfileView("editProfileView");
+}
+
+function selectEditAvatar(avatar) {
+  editSelectedAvatar = avatar;
+
+  document.querySelectorAll("#editProfileView .avatar-option")
+    .forEach(button => {
+      button.classList.toggle(
+        "selected-avatar",
+        button.dataset.avatar === avatar
+      );
+    });
+}
+
+function updateProfileFromDrawer() {
+  const newName =
+    document.getElementById("editProfileInput").value.trim();
+
+  if (!newName) {
+    return;
+  }
+
+  const oldName = currentProfile;
+  const profileData = profiles[oldName];
+    profileData.avatar = editSelectedAvatar;
+
+  if (newName !== oldName && profiles[newName]) {
+    showConfirmation(`A profile with the name "${newName}" already exists.`);
+    return;
+  }
+
+  if (newName !== oldName) {
+    profiles[newName] = profileData;
+    delete profiles[oldName];
+
+    currentProfile = newName;
+    localStorage.setItem("currentProfile", currentProfile);
+  }
+
+  saveProfiles();
+  loadCurrentProfileScores();
+
+  updateProfileButton();
+  updateDrawerProfileDisplay();
+  renderProfileList();
+
+  showProfileView("profileMainView");
+}
+
 function updateProfileDisplay() {
  const display =
  document.getElementById("profileNameDisplay");
 
  if (display) {
  display.textContent =
- `Current Profile: ${currentProfile}`;
+ `Current Profile: ${getProfileDisplayName()}`;
  }
 }
 
@@ -112,7 +232,7 @@ function updateDrawerProfileDisplay() {
 
   if (display) {
     display.textContent =
-      `Current Profile: ${currentProfile}`;
+  `Current Profile: ${getProfileDisplayName()}`;
   }
 }
 
@@ -132,8 +252,18 @@ function updateProfileSummary() {
 }
 
 function createProfileFromDrawer() {
+ const pin = document
+ .getElementById("newProfilePin")
+  .value
+  .trim();
+
+  if (!/^\d{3}$/.test(pin)) {
+   showConfirmation("Was that more 3 digits?")
+   return;
+}
+
   const input =
-    document.getElementById("drawerProfileInput");
+    document.getElementById("newProfileInput");
 
   const name = input.value.trim();
 
@@ -144,8 +274,11 @@ function createProfileFromDrawer() {
   currentProfile = name;
 
   ensureProfileExists(currentProfile);
+  profiles[currentProfile].avatar = selectedAvatar;
+  profiles[currentProfile].pin = pin;
+saveProfiles();
   loadCurrentProfileScores();
-
+updateProfileButton()
   updateDrawerProfileDisplay();
   updateProfileSummary();
   if (document.getElementById("ticScoreboard")) {
@@ -176,28 +309,34 @@ function ensureProfileExists(name) {
 
  if (!profiles[name]) {
  profiles[name] = {
- ticScores: {
- player: 0,
- ai: 0,
- draws: 0
- },
- connectScores: {
- player: 0,
- ai: 0,
- draws: 0
- },
- checkersScores: {
- player: 0,
- ai: 0
- },
- chessScores: {
-  wins: 0,
-  losses: 0,
-  draws: 0
- }
- };
- }
+  avatar: "♟️",
+  pin: "123",
+  ticScores: {
+    player: 0,
+    ai: 0,
+    draws: 0
+  },
 
+  connectScores: {
+    player: 0,
+    ai: 0,
+    draws: 0
+  },
+
+  checkersScores: {
+    player: 0,
+    ai: 0
+  },
+
+  chessScores: {
+    wins: 0,
+    losses: 0,
+    draws: 0
+  }
+}; }
+if (!profiles[name].avatar) {
+  profiles[name].avatar = "♟️";
+}
  saveProfiles();
 }
 
@@ -267,7 +406,8 @@ function renderProfileList() {
     row.classList.add("profile-row");
 
     const button = document.createElement("button");
-    button.textContent = profileName;
+    button.textContent =
+  `${profiles[profileName].avatar} ${profileName}`;
 
     if (profileName === currentProfile) {
       button.classList.add("active-profile");
@@ -296,26 +436,13 @@ function renderProfileList() {
 }
 
 function deleteProfile(profileName) {
-  const profileNames = Object.keys(profiles);
-
-  if (profileNames.length <= 1) {
-    alert("You must have at least one profile.");
-    return;
-  }
-
-  if (profileName === currentProfile) {
-    alert("You can't delete the active profile.");
-    return;
-  }
-
-  const confirmed = confirm(
-    `Delete profile "${profileName}"?\n\nThis cannot be undone.`
+  showConfirmation(
+    `Delete profile "${profileName}"? This cannot be undone.`,
+    () => actuallyDeleteProfile(profileName)
   );
+}
 
-  if (!confirmed) {
-    return;
-  }
-
+function actuallyDeleteProfile(profileName) {
   delete profiles[profileName];
 
   saveProfiles();
@@ -327,7 +454,7 @@ function switchProfile(name) {
 
   ensureProfileExists(currentProfile);
   loadCurrentProfileScores();
-
+  updateProfileButton()
   updateDrawerProfileDisplay();
   updateProfileSummary();
   renderProfileList();
@@ -421,30 +548,41 @@ showAppTitle();
  chessScores.wins + chessScores.losses + chessScores.draws;
 
  document.getElementById("gameArea").innerHTML = `
- <h2>Statistics</h2>
+ <h2>${getProfileDisplayName()}'s Statistics</h2>
 
  <div class="stats-panel">
- <h3>Tic-Tac-Toe</h3>
- <p>Wins: ${ticScores.player}</p>
- <p>Losses: ${ticScores.ai}</p>
- <p>Draws: ${ticScores.draws}</p>
-
- <h3>Connect Four</h3>
- <p>Wins: ${connectScores.player}</p>
- <p>Losses: ${connectScores.ai}</p>
- <p>Draws: ${connectScores.draws}</p>
-
- <h3>Checkers</h3>
- <p>Wins: ${checkersScores.player}</p>
- <p>Losses: ${checkersScores.ai}</p>
-
-  <h3>Chess</h3>
- <p>Wins: ${chessScores.wins}</p>
- <p>Losses: ${chessScores.losses}</p>
- <p>Draws: ${chessScores.draws}</p>
-
+ 
  <h3>Total Games Played</h3>
  <p>${totalGames}</p>
+
+ <div class="stat-grid">
+ <div class="stat-card">
+  <h3>Tic-Tac-Toe</h3>
+  <p>Wins: ${ticScores.player}</p>
+  <p>Losses: ${ticScores.ai}</p>
+  <p>Draws: ${ticScores.draws}</p>
+</div>
+
+ <div class="stat-card">
+  <h3>Connect Four</h3>
+  <p>Wins: ${connectScores.player}</p>
+  <p>Losses: ${connectScores.ai}</p>
+  <p>Draws: ${connectScores.draws}</p>
+</div>
+
+ <div class="stat-card">
+  <h3>Checkers</h3>
+  <p>Wins: ${checkersScores.player}</p>
+  <p>Losses: ${checkersScores.ai}</p>
+</div>
+
+ <div class="stat-card">
+  <h3>Chess</h3>
+  <p>Wins: ${chessScores.wins}</p>
+  <p>Losses: ${chessScores.losses}</p>
+  <p>Draws: ${chessScores.draws}</p>
+</div>
+</div>
  </div>
  `;
 }
@@ -491,8 +629,7 @@ function resetAllScores() {
  if (document.getElementById("chessScoreboard")) {
   updateChessScoreboard();
  }
-
- alert("All scores reset!");
+ hideResetConfirmation()
 }
 
 //MAIN MENU
@@ -744,3 +881,50 @@ function toggleThemeMenu() {
 function capitalize(word) {
  return word.charAt(0).toUpperCase() + word.slice(1);
 }
+
+function showConfirmation(message, action) {
+  confirmationAction = action;
+
+  document.getElementById("confirmationMessage").textContent = message;
+  document.getElementById("confirmationOverlay").classList.remove("hidden");
+  document.body.classList.add("overlay-open");
+}
+
+function confirmAction() {
+  if (confirmationAction) {
+    confirmationAction();
+  }
+
+  confirmationAction = null;
+  hideConfirmation();
+}
+
+function confirmResetAllScores() {
+  showConfirmation("Are you sure you want to reset all scores?", resetAllScores);
+}
+
+function hideConfirmation() {
+  document
+    .getElementById("confirmationOverlay")
+    .classList.add("hidden");
+
+  const settingsOverlay =
+    document.getElementById("settingsOverlay");
+
+  const profileDrawer =
+    document.getElementById("profileDrawer");
+
+  const settingsOpen =
+    !settingsOverlay.classList.contains("hidden");
+
+  const profileOpen =
+    profileDrawer.classList.contains("open");
+
+  if (!settingsOpen && !profileOpen) {
+    document.body.classList.remove("overlay-open");
+  }
+
+  confirmationAction = null;
+}
+initializeAvatarPicker();
+updateProfileButton();

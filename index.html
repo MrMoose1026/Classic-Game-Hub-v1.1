@@ -8,11 +8,40 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div id="splashScreen" class="splash-screen">
 
+  <div class="splash-content">
+   <div class="splash-title-wrap">
+    <div class="splash-title">
+      Classic Games Hub
+    </div>
+   </div>
+
+   <div class="splash-logo">
+  <span class="splash-c-wrap">
+    <span class="splash-c">C</span>
+  </span>
+
+  <span class="splash-g-wrap">
+    <span class="splash-g">G</span>
+  </span>
+
+  <span class="splash-h-wrap">
+    <span class="splash-h">H</span>
+  </span>
+</div>
+
+   <div class="splash-tagline-wrap">
+    <div class="splash-tagline">
+      Play the Classics
+    </div>
+ </div>
+  </div>
+
+</div>
 <div class="container">
 <h1 id="appTitle">Classic Games Hub</h1>
 <button id="profileButton" onclick="showProfileDrawer()">
-  👤 Profile
 </button>
 <button id="settingsButton" onclick="showSettings()">
 Settings
@@ -24,43 +53,100 @@ Settings
 
   <div id="profileDrawer" class="profile-drawer" onclick="event.stopPropagation()">
 
-    <h2>Profile</h2>
+    <div id="profileMainView" class="profile-view">
 
-    <div id="drawerProfileName">
-  Current Profile: Player 1
+  <h2>Profile</h2>
+
+  <div id="drawerProfileName">
+    Current Profile: Player 1
+  </div>
+
+  <div id="profileSummary">
+    Games Played: 0<br>
+    Favorite Game: None
+  </div>
+<br></br>
+<br></br>
+  <button onclick="showProfileView('newProfileView')">
+    New Profile
+  </button>
+
+  <button onclick="openEditProfile()">
+    Edit Profile
+  </button>
+
+  <button onclick="showProfileView('switchProfileView')">
+    Switch Profile
+  </button>
+
+  <button onclick="openStatisticsFromProfile()">
+    View Statistics
+  </button>
+
+  <button onclick="hideProfileDrawer()">
+    Close
+  </button>
 </div>
-<div id="profileSummary">
-  Games Played: 0<br>
-  Favorite Game: None
-</div>
 
-<h3>Profiles</h3>
-
-<div id="profileList" class="profile-list"></div>
-
+<div id="newProfileView" class="profile-view hidden">
 <h3>New Profile</h3>
-
-<input id="drawerProfileInput" placeholder="Profile name" />
-
+<div class="avatar-picker">
+  <button type="button" class="avatar-option" data-avatar="♟️">♟️</button>
+  <button type="button" class="avatar-option" data-avatar="♞">♞</button>
+  <button type="button" class="avatar-option" data-avatar="♛">♛</button>
+  <button type="button" class="avatar-option" data-avatar="🔴">🔴</button>
+  <button type="button" class="avatar-option" data-avatar="🟡">🟡</button>
+  <button type="button" class="avatar-option" data-avatar="❌">❌</button>
+  <button type="button" class="avatar-option" data-avatar="⭕">⭕</button>
+  <button type="button" class="avatar-option" data-avatar="👑">👑</button>
+</div>
+<input id="newProfileInput" placeholder="Profile name">
+<input id="newProfilePin" type="password" inputmode="numeric" maxlength="3" placeholder="3-digit PIN"/>
 <button onclick="createProfileFromDrawer()">
   Create Profile
 </button>
-
-    <button onclick="openStatisticsFromProfile()">
-  View Statistics
+<button onclick="showProfileView('profileMainView')">
+  Back
 </button>
+</div>
 
-    <button onclick="hideProfileDrawer()">
-      Close
-    </button>
+<div id="editProfileView" class="profile-view hidden">
+ <h3>Edit Profile</h3>
+ <div id="editProfileName"></div>
+  <div class="avatar-picker">
+  <button type="button" class="avatar-option" data-avatar="♟️">♟️</button>
+  <button type="button" class="avatar-option" data-avatar="♞">♞</button>
+  <button type="button" class="avatar-option" data-avatar="♛">♛</button>
+  <button type="button" class="avatar-option" data-avatar="🔴">🔴</button>
+  <button type="button" class="avatar-option" data-avatar="🟡">🟡</button>
+  <button type="button" class="avatar-option" data-avatar="❌">❌</button>
+  <button type="button" class="avatar-option" data-avatar="⭕">⭕</button>
+  <button type="button" class="avatar-option" data-avatar="👑">👑</button>
+</div>
+<input id="editProfileInput" placeholder="editProfileName">
+<button onclick="updateProfileFromDrawer()">
+  Update Profile
+</button>
+<button onclick="showProfileView('profileMainView')">
+  Back
+</button>
+</div>
 
+<div id="switchProfileView" class="profile-view hidden">
+<h3>Profiles</h3>
+<div id="profileList" class="profile-list"></div>
+<button onclick="showProfileView('profileMainView')">
+  Back
+</button>
+</div>
   </div>
 </div>
+
 <div id="settingsOverlay" class="settings-overlay hidden">
 <div id="settingsPanel" class="settings-panel">
 <h2>Settings</h2>
 <h3>Statistics</h3>
-<button onclick="resetAllScores()">
+<button onclick="confirmResetAllScores()">
 Reset All Scores
 </button>
 <h3>Appearance</h3>
@@ -85,6 +171,13 @@ Sound: On
 <button onclick="hideSettings()">Close</button>
 <br><br>
 </div>
+</div>
+<div id="confirmationOverlay" class="confirmation-overlay hidden">
+  <div class="confirmation-box">
+    <p id="confirmationMessage">Are you sure you want to reset all scores?</p>
+    <button onclick="confirmAction()">Yes</button>
+    <button onclick="hideResetConfirmation()">No</button>
+  </div>
 </div>
 <div class="menu">
 <div class="game-grid">

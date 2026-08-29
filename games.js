@@ -4,7 +4,7 @@ function loadTicTacToe() {
   setGameAreaContent(`
 <h2>Tic-Tac-Toe</h2>
 
-<h3 id="statusText">Player X's Turn</h3>
+<h3 id="statusText">${getTicPlayerName(currentPlayer)}'s Turn</h3>
 <div class="board">
 <div class="cell" onclick="makeMove(0)"></div>
 <div class="cell" onclick="makeMove(1)"></div>
@@ -45,6 +45,18 @@ const winningConditions = [
   [2, 4, 6]
 ];
 
+function getTicPlayerName(player) {
+  if (ticGameMode === "ai") {
+    return player === "X"
+      ? getShortProfileName()
+      : "AI";
+  }
+
+  return player === "X"
+    ? getShortProfileName()
+    : "Player 2";
+};
+
 function makeMove(index) {
 
   if (board[index] !== "" || !gameActive) {
@@ -67,7 +79,7 @@ function makeMove(index) {
     updateBoard();
 
     document.getElementById("statusText").textContent =
-      `${currentPlayer} Wins!`;
+  `${getTicPlayerName(currentPlayer)} Wins!`;
 
     ticScores.player++;
     updateTicScoreboard();
@@ -101,7 +113,7 @@ function makeMove(index) {
   } else {
 
     document.getElementById("statusText").textContent =
-      "Player O's Turn";
+      `${getTicPlayerName(currentPlayer)}'s Turn`
   }
 
 }
@@ -188,7 +200,7 @@ function finishAITurn() {
   if (checkWinner()) {
 
     document.getElementById("statusText").textContent =
-      "AI Wins!";
+  `${getTicPlayerName(currentPlayer)} Wins!`;
     ticScores.ai++;
     updateTicScoreboard();
     playSound(winSound);
@@ -209,7 +221,7 @@ function finishAITurn() {
   currentPlayer = "X";
 
   document.getElementById("statusText").textContent =
-    "Player X's Turn";
+   `${getTicPlayerName(currentPlayer)}'s Turn`
 }
 
 function checkWinner() {
@@ -239,7 +251,7 @@ function restartGame() {
   updateBoard();
 
   document.getElementById("statusText").textContent =
-    `Player ${currentPlayer}'s Turn`;
+    `${getTicPlayerName(currentPlayer)}'s Turn`
 }
 
 function updateBoard() {
@@ -265,7 +277,7 @@ function loadConnectFour() {
 <h2>Connect Four</h2>
 
 <h3 id="connectStatus">
-Red Player's Turn
+${getConnectPlayerName(connectCurrentPlayer)}'s Turn
 </h3>
 ${connectGameMode === "ai"
       ? `<div class="difficulty-label">Difficulty: ${capitalize(connectDifficulty)}</div>`
@@ -342,6 +354,18 @@ function renderConnectBoard(animatedRow = -1, animatedCol = -1) {
   }
 }
 
+function getConnectPlayerName(player) {
+  if (connectGameMode === "ai") {
+    return player === "R"
+      ? getShortProfileName()
+      : "AI";
+  }
+
+  return player === "R"
+    ? getShortProfileName()
+    : "Player 2";
+}
+
 function dropPiece(col) {
 
   if (!connectGameActive) {
@@ -370,7 +394,7 @@ function dropPiece(col) {
 
         document.getElementById("connectStatus")
           .textContent =
-          "Red Wins!";
+          `${getConnectPlayerName(connectCurrentPlayer)} Wins!`;
         connectScores.player++;
         updateConnectScoreboard();
         playSound(winSound);
@@ -412,8 +436,8 @@ function dropPiece(col) {
         document.getElementById("connectStatus")
           .textContent =
           connectCurrentPlayer === "R"
-            ? "Red Player's Turn"
-            : "Yellow Player's Turn";
+            ? `${getConnectPlayerName(connectCurrentPlayer)}'s Turn`
+            : `${getConnectPlayerName(connectCurrentPlayer)}'s Turn`;
       }
 
       return;
@@ -632,7 +656,7 @@ function finishConnectAITurn(row, col) {
 
     document.getElementById("connectStatus")
       .textContent =
-      "AI Wins!";
+        `${getConnectPlayerName(currentPlayer)} Wins!`;
     connectScores.ai++;
     updateConnectScoreboard();
     playSound(winSound);
@@ -657,7 +681,7 @@ function finishConnectAITurn(row, col) {
 
   document.getElementById("connectStatus")
     .textContent =
-    "Red Player's Turn";
+    `${getConnectPlayerName(connectCurrentPlayer)}'s Turn`;
 }
 
 function checkConnectWinner(row, col) {
@@ -751,7 +775,7 @@ function loadCheckers() {
  <h2>Checkers</h2>
 
  <h3 id="checkersStatus">
- Red Player's Turn
+ ${getCheckersPlayerName(checkersCurrentPlayer)}'s Turn
  </h3>
 ${checkersGameMode === "ai"
       ? `<div class="difficulty-label">Difficulty: ${capitalize(checkersDifficulty)}</div>`
@@ -817,6 +841,18 @@ function initializeCheckers() {
   checkersGameActive = true;
 
   renderCheckersBoard();
+}
+
+function getCheckersPlayerName(player) {
+  if (checkersGameMode === "ai") {
+    return player === "red"
+      ? getShortProfileName()
+      : "AI";
+  }
+
+  return player === "red"
+    ? getShortProfileName()
+    : "Player 2";
 }
 
 function renderCheckersBoard() {
@@ -1140,7 +1176,7 @@ function finishCheckerTurn() {
         : "Red";
 
     document.getElementById("checkersStatus").textContent =
-      `${winner} Wins!`;
+      `${getCheckersPlayerName(checkersCurrentPlayer)} Wins!`;
     if (winner === "Red") {
       checkersScores.player++;
     } else {
@@ -1156,8 +1192,8 @@ function finishCheckerTurn() {
 
   document.getElementById("checkersStatus").textContent =
     checkersCurrentPlayer === "red"
-      ? "Red Player's Turn"
-      : "Black Player's Turn";
+      ? `${getCheckersPlayerName(checkersCurrentPlayer)}'s Turn`
+      : `${getCheckersPlayerName(checkersCurrentPlayer)}'s Turn`;
 
   renderCheckersBoard();
 
@@ -1184,7 +1220,7 @@ function checkersAIMove() {
   if (moves.length === 0) {
 
     document.getElementById("checkersStatus")
-      .textContent = "Red Wins!";
+      .textContent = `${getCheckersPlayerName(checkersCurrentPlayer)} Wins!`;
 
     playSound(winSound);
 
@@ -1369,7 +1405,7 @@ function checkCheckersWinner() {
 
   if (redPieces === 0) {
     document.getElementById("checkersStatus")
-      .textContent = "Black Wins!";
+      .textContent = `${getCheckersPlayerName(checkersCurrentPlayer)} Wins!`;
 
     playSound(winSound);
     checkersScores.ai++;
@@ -1380,7 +1416,7 @@ function checkCheckersWinner() {
 
   if (blackPieces === 0) {
     document.getElementById("checkersStatus")
-      .textContent = "Red Wins!";
+      .textContent = `${getCheckersPlayerName(checkersCurrentPlayer)} Wins!`;
 
     playSound(winSound);
     checkersScores.player++;
@@ -1632,7 +1668,6 @@ function minimax(depth, isMaximizing) {
 
     for (let move of moves) {
       const undoData = simulateMove(move);
-
       const score = minimax(depth - 1, false);
 
       undoMove(move, undoData);
@@ -1647,7 +1682,6 @@ function minimax(depth, isMaximizing) {
 
     for (let move of moves) {
       const undoData = simulateMove(move);
-
       const score = minimax(depth - 1, true);
 
       undoMove(move, undoData);
@@ -1669,9 +1703,9 @@ function loadChess() {
   setGameAreaContent(`
     <h2 class="chess-title">Chess</h2>
     <h3 id="chessStatus" class="chess-status">
-      White Player's Turn 
-      </h3>
-      ${chessGameMode === "ai"
+      ${getChessPlayerName(chessCurrentPlayer)}'s Turn
+    </h3>
+    ${chessGameMode === "ai"
       ? `<div class="difficulty-label">Difficulty: ${capitalize(chessDifficulty)}</div>`
       : ""}
 
@@ -1765,6 +1799,18 @@ function initializeChess() {
   chessPositionHistory = {};
   recordChessPosition();
   renderChessBoard();
+}
+
+function getChessPlayerName(player) {
+  if (chessGameMode === "ai") {
+    return player === "white"
+      ? getShortProfileName()
+      : "AI";
+  }
+
+  return player === "white"
+    ? getShortProfileName()
+    : "Player 2";
 }
 
 function renderChessBoard() {
@@ -2532,10 +2578,10 @@ renderChessMoveHistory();
     chessCurrentPlayer === "white"
       ? inCheck
         ? "White is in Check!"
-        : "White Player's Turn"
+        : `${getChessPlayerName(chessCurrentPlayer)}'s Turn`
       : inCheck
         ? "Black is in Check!"
-        : "Black Player's Turn";
+        : `${getChessPlayerName(chessCurrentPlayer)}'s Turn`;
 
   renderChessBoard();
 }
@@ -3100,15 +3146,14 @@ function completePromotion(type) {
 }
 
 function offerChessDraw() {
-  const accepted = confirm(
-    `${capitalize(chessCurrentPlayer)} offers a draw.\n\nDoes the other player accept?`
+  showConfirmation(
+    `${getChessPlayerName(chessCurrentPlayer)} offers a draw.\n\nDoes the other player accept?`,
+  () => drawAccepted()
   );
+}
 
-  if (!accepted) {
-    return;
-  }
-
-  document.getElementById("chessStatus")
+  function drawAccepted() {
+    document.getElementById("chessStatus")
     .textContent = "Draw by Agreement!";
 
   chessScores.draws++;
@@ -3118,16 +3163,15 @@ function offerChessDraw() {
 
   renderChessBoard();
 }
+
 function resignChessGame() {
-
-  const confirmed = confirm(
-    "Are you sure you want to resign?"
+ showConfirmation(
+    "Are you sure you want to resign?",
+  () => resignationConfirmed()
   );
+}
 
-  if (!confirmed) {
-    return;
-  }
-
+function resignationConfirmed() {
   const winner =
     chessCurrentPlayer === "white"
       ? "black"
@@ -3135,7 +3179,7 @@ function resignChessGame() {
 
   document.getElementById("chessStatus")
     .textContent =
-    `${capitalize(winner)} Wins by Resignation!`;
+    `${getChessPlayerName(winner)} Wins by Resignation!`;
 
   playSound(winSound);
 
@@ -3161,11 +3205,13 @@ function checkChessGameOver(color) {
 
   if (legalMoves.length === 0 && inCheck) {
     const winner =
-      color === "white" ? "black" : "white";
+      color === "white"
+      ? "black" 
+      : "white";
 
     document.getElementById("chessStatus")
       .textContent =
-      `Checkmate! ${capitalize(winner)} Wins!`;
+      `Checkmate! ${getChessPlayerName(winner)} Wins!`;
 
     playSound(winSound);
     if (winner === "white") {

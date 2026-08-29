@@ -29,7 +29,8 @@ let chessScores = {
 //PROFILE SYSTEM
 let currentProfile =
  localStorage.getItem("currentProfile") || "Player 1";
-
+let selectedAvatar = "♟️";
+let editSelectedAvatar = null;
 let profiles =
  JSON.parse(localStorage.getItem("profiles")) || {};
 
