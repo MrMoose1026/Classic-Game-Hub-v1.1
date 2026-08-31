@@ -33,6 +33,7 @@ let selectedAvatar = "♟️";
 let editSelectedAvatar = null;
 let profiles =
  JSON.parse(localStorage.getItem("profiles")) || {};
+ let pendingProfileSwitch = null;
 
  //TIC-TAC-TOE STATE
 let board;

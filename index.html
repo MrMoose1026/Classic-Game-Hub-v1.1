@@ -124,8 +124,22 @@ Settings
   <button type="button" class="avatar-option" data-avatar="👑">👑</button>
 </div>
 <input id="editProfileInput" placeholder="editProfileName">
+<input
+  id="editProfilePin"
+  type="password"
+  inputmode="numeric"
+  maxlength="3"
+  placeholder="3-digit PIN"
+  class="hidden"
+  >
+<button name="updateProfilePin" onclick="updateProfilePin()">
+  Change PIN
+</button>
 <button onclick="updateProfileFromDrawer()">
   Update Profile
+</button>
+<button onclick="deleteProfile(currentProfile)">
+  Delete Profile
 </button>
 <button onclick="showProfileView('profileMainView')">
   Back
@@ -135,6 +149,21 @@ Settings
 <div id="switchProfileView" class="profile-view hidden">
 <h3>Profiles</h3>
 <div id="profileList" class="profile-list"></div>
+<div id="switchPinSection" class="hidden">
+  <p id="selectedProfileName"></p>
+
+  <input
+    id="switchProfilePin"
+    type="password"
+    inputmode="numeric"
+    maxlength="3"
+    placeholder="3-digit PIN"
+  >
+
+  <button onclick="confirmProfileSwitch()">
+    Switch Profile
+  </button>
+</div>
 <button onclick="showProfileView('profileMainView')">
   Back
 </button>
@@ -176,9 +205,17 @@ Sound: On
   <div class="confirmation-box">
     <p id="confirmationMessage">Are you sure you want to reset all scores?</p>
     <button onclick="confirmAction()">Yes</button>
-    <button onclick="hideResetConfirmation()">No</button>
+    <button onclick="hideConfirmation()">No</button>
   </div>
 </div>
+
+<div id="smokeSignalOverlay" class="smoke-signal-overlay hidden">
+  <div class="smoke-signal-box">
+    <p id="smokeSignalMessage">Are you sure you want to reset all scores?</p>
+    <button onclick="smokeSignalAccept()">Accept it..</button>
+  </div>
+</div>
+
 <div class="menu">
 <div class="game-grid">
   <div class="game-card" onclick="startGame('tic')"><h2>Tic-Tac-Toe </h2>Classic Tic-Tac-Toe</div>

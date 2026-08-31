@@ -34,6 +34,19 @@ function initializeGame() {
   winningCells = [];
 }
 
+function recordTicResult(result) {
+  const mode = ticGameMode === "ai"
+    ? "ai"
+    : "local";
+
+  ticScores[mode][result]++;
+
+  profiles[currentProfile].ticScores = ticScores;
+  saveProfiles();
+
+  updateTicScoreboard();
+}
+
 const winningConditions = [
   [0, 1, 2],
   [3, 4, 5],
@@ -81,8 +94,7 @@ function makeMove(index) {
     document.getElementById("statusText").textContent =
   `${getTicPlayerName(currentPlayer)} Wins!`;
 
-    ticScores.player++;
-    updateTicScoreboard();
+    recordTicResult("win");
     playSound(winSound);
 
     gameActive = false;
@@ -92,8 +104,7 @@ function makeMove(index) {
   if (!board.includes("")) {
     document.getElementById("statusText").textContent =
       "It's a Draw!";
-    ticScores.draws++;
-    updateTicScoreboard();
+    recordTicResult("draw");
     gameActive = false;
     return;
   }
@@ -201,8 +212,7 @@ function finishAITurn() {
 
     document.getElementById("statusText").textContent =
   `${getTicPlayerName(currentPlayer)} Wins!`;
-    ticScores.ai++;
-    updateTicScoreboard();
+    recordTicResult("loss");
     playSound(winSound);
     gameActive = false;
     return;
@@ -212,8 +222,7 @@ function finishAITurn() {
 
     document.getElementById("statusText").textContent =
       "It's a Draw!";
-    ticScores.draws++;
-    updateTicScoreboard();
+    recordTicResult("draw");
     gameActive = false;
     return;
   }
@@ -354,6 +363,19 @@ function renderConnectBoard(animatedRow = -1, animatedCol = -1) {
   }
 }
 
+function recordConnectResult(result) {
+  const mode = connectGameMode === "ai"
+    ? "ai"
+    : "local";
+
+  connectScores[mode][result]++;
+
+  profiles[currentProfile].connectScores = connectScores;
+  saveProfiles();
+
+  updateConnectScoreboard();
+}
+
 function getConnectPlayerName(player) {
   if (connectGameMode === "ai") {
     return player === "R"
@@ -395,8 +417,7 @@ function dropPiece(col) {
         document.getElementById("connectStatus")
           .textContent =
           `${getConnectPlayerName(connectCurrentPlayer)} Wins!`;
-        connectScores.player++;
-        updateConnectScoreboard();
+        recordConnectResult("win");
         playSound(winSound);
         connectGameActive = false;
 
@@ -408,8 +429,7 @@ function dropPiece(col) {
         document.getElementById("connectStatus")
           .textContent =
           "It's a Draw!";
-        connectScores.draws++;
-        updateConnectScoreboard();
+        recordConnectResult("draw");
         connectGameActive = false;
 
         return;
@@ -657,8 +677,7 @@ function finishConnectAITurn(row, col) {
     document.getElementById("connectStatus")
       .textContent =
         `${getConnectPlayerName(currentPlayer)} Wins!`;
-    connectScores.ai++;
-    updateConnectScoreboard();
+    recordConnectResult("loss");
     playSound(winSound);
     connectGameActive = false;
 
@@ -670,8 +689,7 @@ function finishConnectAITurn(row, col) {
     document.getElementById("connectStatus")
       .textContent =
       "It's a Draw!";
-    connectScores.draws++;
-    updateConnectScoreboard();
+    recordConnectResult("draw");
     connectGameActive = false;
 
     return;
@@ -841,6 +859,19 @@ function initializeCheckers() {
   checkersGameActive = true;
 
   renderCheckersBoard();
+}
+
+function recordCheckersResult(result) {
+  const mode = checkersGameMode === "ai"
+    ? "ai"
+    : "local";
+
+  checkersScores[mode][result]++;
+
+  profiles[currentProfile].checkersScores = checkersScores;
+  saveProfiles();
+
+  updateCheckersScoreboard();
 }
 
 function getCheckersPlayerName(player) {
@@ -1178,12 +1209,10 @@ function finishCheckerTurn() {
     document.getElementById("checkersStatus").textContent =
       `${getCheckersPlayerName(checkersCurrentPlayer)} Wins!`;
     if (winner === "Red") {
-      checkersScores.player++;
+      recordCheckersResult("win");
     } else {
-      checkersScores.ai++;
+      recordCheckersResult("loss");
     }
-
-    updateCheckersScoreboard();
     playSound(winSound);
     checkersGameActive = false;
     renderCheckersBoard();
@@ -1408,8 +1437,7 @@ function checkCheckersWinner() {
       .textContent = `${getCheckersPlayerName(checkersCurrentPlayer)} Wins!`;
 
     playSound(winSound);
-    checkersScores.ai++;
-    updateCheckersScoreboard();
+    recordCheckersResult("loss");
     checkersGameActive = false;
     return true;
   }
@@ -1419,8 +1447,7 @@ function checkCheckersWinner() {
       .textContent = `${getCheckersPlayerName(checkersCurrentPlayer)} Wins!`;
 
     playSound(winSound);
-    checkersScores.player++;
-    updateCheckersScoreboard();
+    recordCheckersResult("win");
     checkersGameActive = false;
     return true;
   }
@@ -1811,6 +1838,19 @@ function getChessPlayerName(player) {
   return player === "white"
     ? getShortProfileName()
     : "Player 2";
+}
+
+function recordChessResult(result) {
+  const mode = chessGameMode === "ai"
+    ? "ai"
+    : "local";
+
+  chessScores[mode][result]++;
+
+  profiles[currentProfile].chessScores = chessScores;
+  saveProfiles();
+
+  updateChessScoreboard();
 }
 
 function renderChessBoard() {
@@ -2532,8 +2572,7 @@ renderChessMoveHistory();
       .textContent =
       "Draw by threefold repetition!";
 
-    chessScores.draws++;
-    updateChessScoreboard();
+    recordChessResult("draw");
 
     chessGameActive = false;
 
@@ -2545,8 +2584,7 @@ renderChessMoveHistory();
       .textContent =
       "Draw by 50-move rule!";
 
-    chessScores.draws++;
-    updateChessScoreboard();
+    recordChessResult("draw");
     chessGameActive = false;
     renderChessBoard();
     return;
@@ -3156,8 +3194,7 @@ function offerChessDraw() {
     document.getElementById("chessStatus")
     .textContent = "Draw by Agreement!";
 
-  chessScores.draws++;
-  updateChessScoreboard();
+ recordChessResult("draw");
 
   chessGameActive = false;
 
@@ -3184,13 +3221,11 @@ function resignationConfirmed() {
   playSound(winSound);
 
   if (winner === "white") {
-    chessScores.wins++
+   recordChessResult("win");
   }
-  updateChessScoreboard();
   if (winner === "black") {
-    chessScores.losses++
+    recordChessResult("loss");
   }
-  updateChessScoreboard();
   chessGameActive = false;
 
   renderChessBoard();
@@ -3215,14 +3250,11 @@ function checkChessGameOver(color) {
 
     playSound(winSound);
     if (winner === "white") {
-      chessScores.wins++
-    };
-    updateChessScoreboard();
+      recordChessResult("win");
+    }
     if (winner === "black") {
-      chessScores.losses++
-    };
-    updateChessScoreboard();
-
+      recordChessResult("loss");
+    }
     chessGameActive = false;
 
     return true;
@@ -3234,8 +3266,7 @@ function checkChessGameOver(color) {
       "Stalemate! It's a Draw!";
 
     playSound(winSound);
-    chessScores.draws++;
-    updateChessScoreboard();
+    recordChessResult("draw");
     chessGameActive = false;
 
     return true;

@@ -7,7 +7,6 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    background: #1e1e2f;
     z-index: 9999;
   animation: splashFadeOut 0.6s ease 3.2s forwards;
 }
@@ -61,14 +60,35 @@
 
 .splash-c {
     transform: translate(-20px, -50px);
+      font-weight: 900;
+  font-family: gwenchana;
+  text-shadow:
+    1px 1px 0 rgba(0,0,0,0.35),
+    2px 2px 0 rgba(0,0,0,0.30),
+    3px 3px 0 rgba(0,0,0,0.25),
+    4px 4px 0 rgba(0,0,0,0.20);
 }
 
 .splash-g {
     transform: translate(12px, 16px);
+      font-weight: 900;
+  font-family: gwenchana;
+  text-shadow:
+    1px 1px 0 rgba(0,0,0,0.35),
+    2px 2px 0 rgba(0,0,0,0.30),
+    3px 3px 0 rgba(0,0,0,0.25),
+    4px 4px 0 rgba(0,0,0,0.20);
 }
 
 .splash-h {
     transform: translate(40px, 80px);
+      font-weight: 900;
+  font-family: gwenchana;
+  text-shadow:
+    1px 1px 0 rgba(0,0,0,0.35),
+    2px 2px 0 rgba(0,0,0,0.30),
+    3px 3px 0 rgba(0,0,0,0.25),
+    4px 4px 0 rgba(0,0,0,0.20);
 }
 
 .splash-c-wrap {
@@ -445,6 +465,48 @@ color: white;
     color: white;
 }
 
+.dark-theme .smoke-signal-box {
+    background: #2f3640;
+    color: white;
+}
+
+.dark-theme .splash-screen {
+  background:  #2f3640;
+}
+
+.dark-theme .splash-c {
+    color: #4b7bec;
+      font-weight: 900;
+  font-family: gwenchana;
+  text-shadow:
+    1px 1px 0 rgba(0,0,0,0.35),
+    2px 2px 0 rgba(0,0,0,0.30),
+    3px 3px 0 rgba(0,0,0,0.25),
+    4px 4px 0 rgba(0,0,0,0.20);
+}
+
+.dark-theme .splash-g {
+    color:#4b7bec;
+      font-weight: 900;
+  font-family: gwenchana;
+  text-shadow:
+    1px 1px 0 rgba(0,0,0,0.35),
+    2px 2px 0 rgba(0,0,0,0.30),
+    3px 3px 0 rgba(0,0,0,0.25),
+    4px 4px 0 rgba(0,0,0,0.20);
+}
+
+.dark-theme .splash-h {
+  color: #4b7bec;
+    font-weight: 900;
+  font-family: gwenchana;
+  text-shadow:
+    1px 1px 0 rgba(0,0,0,0.35),
+    2px 2px 0 rgba(0,0,0,0.30),
+    3px 3px 0 rgba(0,0,0,0.25),
+    4px 4px 0 rgba(0,0,0,0.20);
+}
+
 /* NEON THEME */
 .neon-theme {
 background: #050510;
@@ -510,6 +572,49 @@ box-shadow: 0 0 20px #00ffea;
     box-shadow: 0 0 20px #00ffea;
 }
 
+.neon-theme .smoke-signal-box {
+    background: #111122;
+    color: #00ffea;
+    box-shadow: 0 0 20px #00ffea;
+}
+
+.neon-theme .splash-screen {
+ background: #111122;
+}
+
+.neon-theme .splash-c {
+ color:#00ffea;
+   font-weight: 900;
+  font-family: gwenchana;
+  text-shadow:
+    1px 1px 0 rgba(0,0,0,0.35),
+    2px 2px 0 rgba(0,0,0,0.30),
+    3px 3px 0 rgba(0,0,0,0.25),
+    4px 4px 0 rgba(0,0,0,0.20);
+}
+
+.neon-theme .splash-g {
+  color: #ff00ff;
+    font-weight: 900;
+  font-family: gwenchana;
+  text-shadow:
+    1px 1px 0 rgba(0,0,0,0.35),
+    2px 2px 0 rgba(0,0,0,0.30),
+    3px 3px 0 rgba(0,0,0,0.25),
+    4px 4px 0 rgba(0,0,0,0.20);
+}
+
+.neon-theme .splash-h {
+ color:#00ffea;
+   font-weight: 900;
+  font-family: gwenchana;
+  text-shadow:
+    1px 1px 0 rgba(0,0,0,0.35),
+    2px 2px 0 rgba(0,0,0,0.30),
+    3px 3px 0 rgba(0,0,0,0.25),
+    4px 4px 0 rgba(0,0,0,0.20);
+}
+
 /* RETRO THEME */
 .retro-theme {
 background: #f4d35e;
@@ -563,7 +668,64 @@ color: #2b2b2b;
     color: #2b2b2b;
 }
 
+.retro-theme .smoke-signal-box {
+    background: #ee964b;
+    color: #2b2b2b;
+    box-shadow: 0 0 20px #2b2b2b;
+}
+
+.retro-theme .splash-screen {
+  background: #f4d35e;
+}
+
+.retro-theme .splash-c {
+   color: #ee964b;
+     font-weight: 900;
+  font-family: gwenchana;
+  text-shadow:
+    1px 1px 0 rgba(0,0,0,0.35),
+    2px 2px 0 rgba(0,0,0,0.30),
+    3px 3px 0 rgba(0,0,0,0.25),
+    4px 4px 0 rgba(0,0,0,0.20);
+}
+
+.retro-theme .splash-g {
+color: #ee964b;
+  font-weight: 900;
+  font-family: gwenchana;
+  text-shadow:
+    1px 1px 0 rgba(0,0,0,0.35),
+    2px 2px 0 rgba(0,0,0,0.30),
+    3px 3px 0 rgba(0,0,0,0.25),
+    4px 4px 0 rgba(0,0,0,0.20);
+}
+
+.retro-theme .splash-h {
+color: #ee964b;
+  font-weight: 900;
+  font-family: gwenchana;
+  text-shadow:
+    1px 1px 0 rgba(0,0,0,0.35),
+    2px 2px 0 rgba(0,0,0,0.30),
+    3px 3px 0 rgba(0,0,0,0.25),
+    4px 4px 0 rgba(0,0,0,0.20);
+}
+
 /* Settings Button Styles */
+
+.stat-matchups {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.stat-matchup {
+  text-align: center;
+}
+
+.stat-matchup + .stat-matchup {
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+}
 
 #settingsButton {
 margin-top: 5px;
@@ -610,6 +772,28 @@ box-shadow: 0 0 25px rgba(0,0,0,0.5);
 }
 
 .confirmation-box {
+    padding: 20px;
+    border-radius: 16px;
+    text-align: center;
+}
+
+.smoke-signal-overlay {
+    position: fixed;
+    inset: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 2000;
+}
+
+.smoke-signal-overlay.hidden {
+    display: none;
+}
+
+.smoke-signal-box {
     padding: 20px;
     border-radius: 16px;
     text-align: center;
@@ -1080,7 +1264,7 @@ color: #4b7bec;
 }
 
 .splash-h {
-    transform: translate(0px, 60px);
+    transform: translate(15px, 60px);
 }
 
 }

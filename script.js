@@ -20,39 +20,23 @@ let chessAIEnabled = true;
 function updateTicScoreboard() {
 profiles[currentProfile].ticScores = ticScores;
 saveProfiles();
-localStorage.setItem(
-"ticScores",
-JSON.stringify(ticScores)
-);
 }
 
 function updateConnectScoreboard() {
   profiles[currentProfile].connectScores =
     connectScores;
   saveProfiles();
-  localStorage.setItem(
-    "connectScores",
-    JSON.stringify(connectScores)
-  );
 }
 
 function updateCheckersScoreboard() {
 profiles[currentProfile].checkersScores = checkersScores;
 saveProfiles();
- localStorage.setItem(
- "checkersScores",
- JSON.stringify(checkersScores)
- );
 }
 
 function updateChessScoreboard() {
   profiles[currentProfile].chessScores = chessScores;
   saveProfiles();
-  localStorage.setItem(
-    "chessScores",
-    JSON.stringify(chessScores)
-  );
-}
+  }
 
 //SYSTEM SETTINGS
 function setTicMode(mode) {

@@ -101,7 +101,8 @@ function openEditProfile() {
         button.dataset.avatar === editSelectedAvatar
       );
     });
-
+document.getElementById("editProfilePin").value =
+  profiles[currentProfile].pin || "";
   showProfileView("editProfileView");
 }
 
@@ -128,9 +129,10 @@ function updateProfileFromDrawer() {
   const oldName = currentProfile;
   const profileData = profiles[oldName];
     profileData.avatar = editSelectedAvatar;
+    profileData.pin = document.getElementById("editProfilePin").value.trim();
 
   if (newName !== oldName && profiles[newName]) {
-    showConfirmation(`A profile with the name "${newName}" already exists.`);
+    showSmokeSignal(`"${newName}" already exists and it is not you.`);
     return;
   }
 
@@ -150,6 +152,20 @@ function updateProfileFromDrawer() {
   renderProfileList();
 
   showProfileView("profileMainView");
+}
+
+function updateProfilePin() {
+  document.getElementById("editProfileInput").classList.remove("hidden");
+ 
+  document.getElementById("editProfilePin").classList.add("hidden");
+  
+  const newPin =
+  document.getElementById("editProfilePin").value.trim();
+
+if (!/^\d{3}$/.test(newPin)) {
+  showSmokeSignal("THOSE WERE NOT DIGITS.");
+  profileData.pin = newPin;;
+}
 }
 
 function updateProfileDisplay() {
@@ -252,28 +268,26 @@ function updateProfileSummary() {
 }
 
 function createProfileFromDrawer() {
- const pin = document
- .getElementById("newProfilePin")
-  .value
-  .trim();
+ const pin = 
+   document.getElementById("newProfilePin").value.trim();
 
   if (!/^\d{3}$/.test(pin)) {
-   showConfirmation("Was that more 3 digits?")
+   showSmokeSignal("THOSE WERE NOT DIGITS.")
    return;
 }
 
-  const input =
-    document.getElementById("newProfileInput");
+  const name =
+    document.getElementById("newProfileInput").value.trim();
 
-  const name = input.value.trim();
-
-  if (!name) {
+  if (profiles[name]) {
+    showSmokeSignal(`"${name}" already exists and it is not you.`);
     return;
   }
 
   currentProfile = name;
 
   ensureProfileExists(currentProfile);
+
   profiles[currentProfile].avatar = selectedAvatar;
   profiles[currentProfile].pin = pin;
 saveProfiles();
@@ -296,10 +310,16 @@ updateProfileButton()
     updateChessScoreboard();
   }
 
-  input.value = "";
+
   renderProfileList();
 
+    document.getElementById("newProfileView")
+    .classList.add("hidden");
+
+  document.getElementById("profileMainView")
+    .classList.remove("hidden");
 }
+
 function openStatisticsFromProfile() {
   hideProfileDrawer();
   showStatistics();
@@ -312,31 +332,101 @@ function ensureProfileExists(name) {
   avatar: "♟️",
   pin: "123",
   ticScores: {
-    player: 0,
-    ai: 0,
-    draws: 0
+    ai: { win: 0, loss: 0, draw: 0 },
+    local: { win: 0, loss: 0, draw: 0 }
   },
 
   connectScores: {
-    player: 0,
-    ai: 0,
-    draws: 0
+    ai: { win: 0, loss: 0, draw: 0 },
+    local: { win: 0, loss: 0, draw: 0 }
   },
 
   checkersScores: {
-    player: 0,
-    ai: 0
+    ai: { win: 0, loss: 0, draw: 0 },
+    local: { win: 0, loss: 0, draw: 0 }
   },
 
   chessScores: {
-    wins: 0,
-    losses: 0,
-    draws: 0
+    ai: { win: 0, loss: 0, draw: 0 },
+    local: { win: 0, loss: 0, draw: 0 }
   }
+ 
 }; }
 if (!profiles[name].avatar) {
   profiles[name].avatar = "♟️";
 }
+if (!profiles[name].ticScores.local) {
+  const old = profiles[name].ticScores;
+
+  profiles[name].ticScores = {
+    ai: {
+      win: old.player || 0,
+      loss: old.ai || 0,
+      draw: old.draws || 0
+    },
+
+    local: {
+      win: 0,
+      loss: 0,
+      draw: 0
+    }
+  };
+}
+
+if (!profiles[name].connectScores.local) {
+  const old = profiles[name].connectScores;
+
+  profiles[name].connectScores = {
+    ai: {
+      win: old.player || 0,
+      loss: old.ai || 0,
+      draw: old.draws || 0
+    },
+
+    local: {
+      win: 0,
+      loss: 0,
+      draw: 0
+    }
+  };
+}
+
+if (!profiles[name].checkersScores.local) {
+  const old = profiles[name].checkersScores;
+
+  profiles[name].checkersScores = {
+    ai: {
+      win: old.player || 0,
+      loss: old.ai || 0,
+      draw: old.draws || 0
+    },
+
+    local: {
+      win: 0,
+      loss: 0,
+      draw: 0
+    }
+  };
+}
+
+if (!profiles[name].chessScores.local) {
+  const old = profiles[name].chessScores;
+
+  profiles[name].chessScores = {
+    ai: {
+      win: old.player || 0,
+      loss: old.ai || 0,
+      draw: old.draws || 0
+    },
+
+    local: {
+      win: 0,
+      loss: 0,
+      draw: 0
+    }
+  };
+}
+
  saveProfiles();
 }
 
@@ -414,39 +504,61 @@ function renderProfileList() {
     }
 
     button.onclick = () => {
-      switchProfile(profileName);
-    };
+  pendingProfileSwitch = profileName;
+
+  document.getElementById("selectedProfileName").textContent =
+    `Selected: ${profileName}`;
+
+  document.getElementById("switchPinSection")
+    .classList.remove("hidden");
+};
 
     row.appendChild(button);
 
-    if (profileName !== currentProfile) {
-      const deleteButton = document.createElement("button");
-      deleteButton.textContent = "🗑️";
-      deleteButton.classList.add("delete-profile-btn");
-
-      deleteButton.onclick = () => {
-        deleteProfile(profileName);
-      };
-
+   /* if (profileName !== currentProfile) {
       row.appendChild(deleteButton);
     }
-
+*/
     profileList.appendChild(row);
   });
 }
 
-function deleteProfile(profileName) {
-  showConfirmation(
-    `Delete profile "${profileName}"? This cannot be undone.`,
-    () => actuallyDeleteProfile(profileName)
-  );
+function confirmProfileSwitch() {
+  const enteredPin =
+    document.getElementById("switchProfilePin").value;
+
+  if (enteredPin !== profiles[pendingProfileSwitch].pin) {
+    showSmokeSignal("NOPE 😈 Try again.");
+    return;
+  }
+
+  switchProfile(pendingProfileSwitch);
+  pendingProfileSwitch = null;
 }
 
-function actuallyDeleteProfile(profileName) {
-  delete profiles[profileName];
+function deleteProfile(currentProfile) {
+  if (Object.keys(profiles).length === 1) {
+    showSmokeSignal("You cannot delete the last remaining profile.");
+  return;
+  }
+
+  if (Object.keys(profiles).length > 1) {
+    showConfirmation(
+    `Delete profile "${currentProfile}"? This cannot be undone.`,
+    () => actuallyDeleteProfile(currentProfile)
+  );
+}
+}
+
+function actuallyDeleteProfile(currentProfile) {
+  delete profiles[currentProfile];
 
   saveProfiles();
+  currentProfile = null; 
+  localStorage.removeItem("currentProfile");
+
   renderProfileList();
+  showProfileView("switchProfileView");
 }
 
 function switchProfile(name) {
@@ -473,49 +585,93 @@ function switchProfile(name) {
   if (document.getElementById("chessScoreboard")) {
     updateChessScoreboard();
   }
+  
+  pendingProfileSwitch = null;
+  
+  document.getElementById("switchPinSection")
+    .classList.add("hidden");
+
+  document.getElementById("switchProfileView")
+    .classList.add("hidden");
+
+  document.getElementById("profileMainView")
+    .classList.remove("hidden");
 }
 
 function getGamesPlayed() {
 
-  return (
-    ticScores.player +
-    ticScores.ai +
-    ticScores.draws +
+ const ticGamesPlayed =
+  ticScores.ai.win +
+  ticScores.ai.loss +
+  ticScores.ai.draw +
+  ticScores.local.win +
+  ticScores.local.loss +
+  ticScores.local.draw;
 
-    connectScores.player +
-    connectScores.ai +
-    connectScores.draws +
+ const connectGamesPlayed =
+    connectScores.ai.win +
+    connectScores.ai.loss +
+    connectScores.ai.draw +
+    connectScores.local.win +
+    connectScores.local.loss +
+    connectScores.local.draw;
 
-    checkersScores.player +
-    checkersScores.ai+
+   const checkersGamesPlayed =
+    checkersScores.ai.win +
+    checkersScores.ai.loss +
+    checkersScores.ai.draw +
+    checkersScores.local.win +
+    checkersScores.local.loss +
+    checkersScores.local.draw;
 
-    chessScores.wins +
-    chessScores.losses +
-    chessScores.draws
-  );
+   const chessGamesPlayed =
+    chessScores.ai.win +
+    chessScores.ai.loss +
+    chessScores.ai.draw +
+    chessScores.local.win +
+    chessScores.local.loss +
+    chessScores.local.draw
+  
+  return ticGamesPlayed +
+    connectGamesPlayed +
+    checkersGamesPlayed +
+    chessGamesPlayed;
 }
 
 function getFavoriteGame() {
 
   const gameTotals = {
     "Tic-Tac-Toe":
-      ticScores.player +
-      ticScores.ai +
-      ticScores.draws,
+      ticScores.ai.win +
+      ticScores.ai.loss +
+      ticScores.ai.draw +
+      ticScores.local.win +
+      ticScores.local.loss +
+      ticScores.local.draw,
 
     "Connect Four":
-      connectScores.player +
-      connectScores.ai +
-      connectScores.draws,
+      connectScores.ai.win +
+    connectScores.ai.loss +
+    connectScores.ai.draw +
+    connectScores.local.win +
+    connectScores.local.loss +
+    connectScores.local.draw,
 
     "Checkers":
-      checkersScores.player +
-      checkersScores.ai,
+    checkersScores.ai.win +
+    checkersScores.ai.loss +
+    checkersScores.ai.draw +
+    checkersScores.local.win +
+    checkersScores.local.loss +
+    checkersScores.local.draw,
     
     "Chess":
-      chessScores.wins +
-      chessScores.losses +
-      chessScores.draws
+    chessScores.ai.win +
+    chessScores.ai.loss +
+    chessScores.ai.draw +
+    chessScores.local.win +
+    chessScores.local.loss +
+    chessScores.local.draw
   };
 
   let favorite = "None";
@@ -541,11 +697,7 @@ showAppTitle();
  document.querySelector(".menu").classList.add("hidden");
  document.getElementById("backButton").style.display = "inline-block";
 
- const totalGames =
- ticScores.player + ticScores.ai + ticScores.draws +
- connectScores.player + connectScores.ai + connectScores.draws +
- checkersScores.player + checkersScores.ai +
- chessScores.wins + chessScores.losses + chessScores.draws;
+ const totalGames = getGamesPlayed();
 
  document.getElementById("gameArea").innerHTML = `
  <h2>${getProfileDisplayName()}'s Statistics</h2>
@@ -558,29 +710,79 @@ showAppTitle();
  <div class="stat-grid">
  <div class="stat-card">
   <h3>Tic-Tac-Toe</h3>
-  <p>Wins: ${ticScores.player}</p>
-  <p>Losses: ${ticScores.ai}</p>
-  <p>Draws: ${ticScores.draws}</p>
+
+  <div class="stat-matchups">
+    <div class="stat-matchup">
+      <h4>VS AI</h4>
+      <p>Wins: ${ticScores.ai.win}</p>
+      <p>Losses: ${ticScores.ai.loss}</p>
+      <p>Draws: ${ticScores.ai.draw}</p>
+    </div>
+
+    <div class="stat-matchup">
+      <h4>VS Player</h4>
+      <p>Wins: ${ticScores.local.win}</p>
+      <p>Losses: ${ticScores.local.loss}</p>
+      <p>Draws: ${ticScores.local.draw}</p>
+    </div>
+  </div>
 </div>
 
  <div class="stat-card">
   <h3>Connect Four</h3>
-  <p>Wins: ${connectScores.player}</p>
-  <p>Losses: ${connectScores.ai}</p>
-  <p>Draws: ${connectScores.draws}</p>
+  <div class="stat-matchups">
+
+    <div class="stat-matchup">
+  <h4>VS AI</h4>
+  <p>Wins: ${connectScores.ai.win}</p>
+  <p>Losses: ${connectScores.ai.loss}</p>
+  <p>Draws: ${connectScores.ai.draw}</p>
+  </div>
+
+    <div class="stat-matchup">
+  <h4>VS Player</h4>
+  <p>Wins: ${connectScores.local.win}</p>
+  <p>Losses: ${connectScores.local.loss}</p>
+  <p>Draws: ${connectScores.local.draw}</p>
+</div>
+</div>
 </div>
 
  <div class="stat-card">
   <h3>Checkers</h3>
-  <p>Wins: ${checkersScores.player}</p>
-  <p>Losses: ${checkersScores.ai}</p>
+  <div class="stat-matchups">
+
+    <div class="stat-matchup">
+  <h4>VS AI</h4>
+  <p>Wins: ${checkersScores.ai.win}</p>
+  <p>Losses: ${checkersScores.ai.loss}</p>
+  <p>Draws: ${checkersScores.ai.draw}</p>
+</div>
+<div class="stat-matchup">
+  <h4>VS Player</h4>
+  <p>Wins: ${checkersScores.local.win}</p>
+  <p>Losses: ${checkersScores.local.loss}</p>
+  <p>Draws: ${checkersScores.local.draw}</p>
+</div>
+</div>
 </div>
 
  <div class="stat-card">
   <h3>Chess</h3>
-  <p>Wins: ${chessScores.wins}</p>
-  <p>Losses: ${chessScores.losses}</p>
-  <p>Draws: ${chessScores.draws}</p>
+  <div class="stat-matchups">
+
+    <div class="stat-matchup">
+      <h4>VS AI</h4>
+      <p>Wins: ${chessScores.ai.win}</p>
+      <p>Losses: ${chessScores.ai.loss}</p>
+      <p>Draws: ${chessScores.ai.draw}</p>
+    </div>
+
+    <div class="stat-matchup">
+      <h4>VS Player</h4>
+  <p>Wins: ${chessScores.local.win}</p>
+  <p>Losses: ${chessScores.local.loss}</p>
+  <p>Draws: ${chessScores.local.draw}</p>
 </div>
 </div>
  </div>
@@ -588,32 +790,31 @@ showAppTitle();
 }
 function resetAllScores() {
  ticScores = {
- player: 0,
- ai: 0,
- draws: 0
- };
+    ai: { win: 0, loss: 0, draw: 0 },
+    local: { win: 0, loss: 0, draw: 0 }
+  },
 
- connectScores = {
- player: 0,
- ai: 0,
- draws: 0
- };
+  connectScores = {
+    ai: { win: 0, loss: 0, draw: 0 },
+    local: { win: 0, loss: 0, draw: 0 }
+  },
 
- checkersScores = {
- player: 0,
- ai: 0
- };
- 
- chessScores = {
-  wins: 0,
-  losses: 0,
-  draws: 0
- };
+  checkersScores = {
+    ai: { win: 0, loss: 0, draw: 0 },
+    local: { win: 0, loss: 0, draw: 0 }
+  },
 
- localStorage.setItem("ticScores", JSON.stringify(ticScores));
- localStorage.setItem("connectScores", JSON.stringify(connectScores));
- localStorage.setItem("checkersScores", JSON.stringify(checkersScores));
- localStorage.setItem("chessScores", JSON.stringify(chessScores));
+  chessScores = {
+    ai: { win: 0, loss: 0, draw: 0 },
+    local: { win: 0, loss: 0, draw: 0 }
+  };
+
+profiles[currentProfile].ticScores = ticScores;
+profiles[currentProfile].connectScores = connectScores;
+profiles[currentProfile].checkersScores = checkersScores;
+profiles[currentProfile].chessScores = chessScores;
+
+saveProfiles();
 
  if (document.getElementById("ticScoreboard")) {
  updateTicScoreboard();
@@ -629,7 +830,6 @@ function resetAllScores() {
  if (document.getElementById("chessScoreboard")) {
   updateChessScoreboard();
  }
- hideResetConfirmation()
 }
 
 //MAIN MENU
@@ -882,6 +1082,31 @@ function capitalize(word) {
  return word.charAt(0).toUpperCase() + word.slice(1);
 }
 
+function showSmokeSignal(message) {
+  document.getElementById("smokeSignalMessage").textContent = message;
+  document.getElementById("smokeSignalOverlay").classList.remove("hidden");
+  document.body.classList.add("overlay-open");
+}
+
+function smokeSignalAccept() {
+  document.getElementById("smokeSignalOverlay").classList.add("hidden");
+   const settingsOverlay =
+    document.getElementById("settingsOverlay");
+
+  const profileDrawer =
+    document.getElementById("profileDrawer");
+
+  const settingsOpen =
+    !settingsOverlay.classList.contains("hidden");
+
+  const profileOpen =
+    profileDrawer.classList.contains("open");
+
+  if (!settingsOpen && !profileOpen) {
+    document.body.classList.remove("overlay-open");
+  }
+}
+
 function showConfirmation(message, action) {
   confirmationAction = action;
 
@@ -894,7 +1119,7 @@ function confirmAction() {
   if (confirmationAction) {
     confirmationAction();
   }
-
+ 
   confirmationAction = null;
   hideConfirmation();
 }
