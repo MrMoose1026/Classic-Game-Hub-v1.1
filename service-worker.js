@@ -9,6 +9,7 @@ const FILES_TO_CACHE = [
   "./games.js",
   "./script.js",
   "./manifest.json",
+  ".img/Gwenchana.ttf",
 
   "./img/icons/icon-192.png",
   "./img/icons/icon-512.png",
