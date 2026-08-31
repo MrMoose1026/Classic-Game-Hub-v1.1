@@ -1,4 +1,9 @@
 /* Splash Screen Styles */
+@font-face {
+  font-family: "Gwenchana";
+  src: url("img/Gwenchana.ttf") format(ttf);
+}
+
 .splash-screen {
     position: fixed;
     inset: 0;
@@ -61,7 +66,7 @@
 .splash-c {
     transform: translate(-20px, -50px);
       font-weight: 900;
-  font-family: gwenchana;
+  font-family: Gwenchana;
   text-shadow:
     1px 1px 0 rgba(0,0,0,0.35),
     2px 2px 0 rgba(0,0,0,0.30),
