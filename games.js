@@ -1735,7 +1735,10 @@ function loadChess() {
     ${chessGameMode === "ai"
       ? `<div class="difficulty-label">Difficulty: ${capitalize(chessDifficulty)}</div>`
       : ""}
-
+<div class="chess-clock">
+  <div class="clock-player">
+    <div id="player2Time">05:00</div>
+</div>
   <div class="chess-layout">
     <div class="chess-side-panel captured-panel">
      <div>
@@ -1757,7 +1760,9 @@ function loadChess() {
   <div id="moveHistoryList"></div>
   </div>
   </div>
-  
+  <div class="chess-clock"> 
+  <div class="clock-player">
+    <div id="player1Time">05:00</div>
   <div id="actionButtons" class="chess-actions">
     <button class="restart-btn" onclick="restartChess()">
      Restart Game
@@ -1826,6 +1831,57 @@ function initializeChess() {
   chessPositionHistory = {};
   recordChessPosition();
   renderChessBoard();
+}
+
+let player1Time = 5 * 60;
+let player2Time = 5 * 60;
+let activePlayer = null;
+
+function formatTime(seconds) {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+}
+
+function updateChessClockDisplay() {
+  const player1Display = document.getElementById("player1Time");
+  const player2Display = document.getElementById("player2Time");
+
+  if (!player1Display || !player2Display) return;
+
+  player1Display.textContent = formatTime(player1Time);
+  player2Display.textContent = formatTime(player2Time);
+}
+
+let clockInterval = null;
+
+function startClock(player) {
+  activePlayer = player;
+
+  updateChessClockDisplay();
+
+  if (clockInterval) return;
+
+  clockInterval = setInterval(() => {
+    if (activePlayer === 1 && player1Time > 0) {
+      player1Time--;
+
+      if (player1Time === 0) {
+        handleChessTimeout(1);
+      }
+    }
+
+    if (activePlayer === 2 && player2Time > 0) {
+      player2Time--;
+
+      if (player2Time === 0) {
+        handleChessTimeout(2);
+      }
+    }
+
+    updateChessClockDisplay();
+  }, 1000);
 }
 
 function getChessPlayerName(player) {
@@ -2561,10 +2617,16 @@ renderChessMoveHistory();
   highlightedChessMoves = [];
 
   chessCurrentPlayer =
-    chessCurrentPlayer === "white"
-      ? "black"
-      : "white";
-  const repetitionCount =
+  chessCurrentPlayer === "white"
+    ? "black"
+    : "white";
+
+if (chessCurrentPlayer === "white") {
+  startClock(1);
+} else {
+  startClock(2);
+}
+ const repetitionCount =
     recordChessPosition();
 
   if (repetitionCount >= 3) {
@@ -2575,7 +2637,7 @@ renderChessMoveHistory();
     recordChessResult("draw");
 
     chessGameActive = false;
-
+    stopChessClock();
     renderChessBoard();
     return;
   }
@@ -2586,6 +2648,7 @@ renderChessMoveHistory();
 
     recordChessResult("draw");
     chessGameActive = false;
+    stopChessClock();
     renderChessBoard();
     return;
   }
@@ -2622,6 +2685,17 @@ renderChessMoveHistory();
         : `${getChessPlayerName(chessCurrentPlayer)}'s Turn`;
 
   renderChessBoard();
+}
+
+function resetChessClock() {
+  clearInterval(clockInterval);
+  clockInterval = null;
+
+  player1Time = 5 * 60;
+  player2Time = 5 * 60;
+  activePlayer = null;
+
+  updateChessClockDisplay();
 }
 
 function renderCapturedPieces() {
@@ -3197,11 +3271,14 @@ function offerChessDraw() {
  recordChessResult("draw");
 
   chessGameActive = false;
-
+stopChessClock();
   renderChessBoard();
 }
 
 function resignChessGame() {
+  if (!chessGameActive) {
+    return;
+  }
  showConfirmation(
     "Are you sure you want to resign?",
   () => resignationConfirmed()
@@ -3227,8 +3304,42 @@ function resignationConfirmed() {
     recordChessResult("loss");
   }
   chessGameActive = false;
-
+  stopChessClock();
   renderChessBoard();
+}
+
+function hasOnlyKing(color) {
+  const pieces = chessBoard
+    .flat()
+    .filter(piece => piece && piece.color === color);
+
+  return pieces.length === 1 && pieces[0].type === "king";
+}
+
+function handleChessTimeout(flaggedPlayer) {
+  stopChessClock();
+
+  const opponentColor =
+    flaggedPlayer === 1 ? "black" : "white";
+
+  if (hasOnlyKing(opponentColor)) {
+    document.getElementById("chessStatus").textContent =
+      "Draw by insufficient mating material!";
+
+    recordChessResult("draw");
+  } else {
+    const winner =
+      flaggedPlayer === 1 ? "Black" : "White";
+
+    document.getElementById("chessStatus").textContent =
+      `${winner} wins on time!`;
+
+    recordChessResult(
+      flaggedPlayer === 1 ? "black" : "white"
+    );
+  }
+
+  chessGameActive = false;
 }
 
 function checkChessGameOver(color) {
@@ -3256,7 +3367,7 @@ function checkChessGameOver(color) {
       recordChessResult("loss");
     }
     chessGameActive = false;
-
+    stopChessClock();
     return true;
   }
 
@@ -3268,7 +3379,7 @@ function checkChessGameOver(color) {
     playSound(winSound);
     recordChessResult("draw");
     chessGameActive = false;
-
+    stopChessClock();
     return true;
   }
 
@@ -3277,4 +3388,5 @@ function checkChessGameOver(color) {
 
 function restartChess() {
   initializeChess();
+  resetChessClock();
 }
