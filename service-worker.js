@@ -1,4 +1,4 @@
-const CACHE_NAME = "cgh-v1.1.2";
+const CACHE_NAME = "cgh-v1.1.3";
 
 const FILES_TO_CACHE = [
   "./",
@@ -6,10 +6,14 @@ const FILES_TO_CACHE = [
   "./style.css",
   "./state.js",
   "./ui.js",
-  "./games.js",
+  "./chess.js",
+  "./chessWorker.js",
+  "./checkers.js",
+  "./connectfour.js",
+  "./tictactoe.js",
   "./script.js",
   "./manifest.json",
-  ".img/Gwenchana.ttf",
+  "./img/Gwenchana.ttf",
 
   "./img/icons/icon-192.png",
   "./img/icons/icon-512.png",

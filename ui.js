@@ -4,6 +4,17 @@ const winSound = new Audio("img/win.mp3");
 const dropSound = new Audio("img/drop.mp3");
 const blockSound = new Audio("img/block.mp3");
 const tapSound = new Audio("img/tap.mp3");
+const wrongSound = new Audio("img/wrong.mp3");
+
+function playWrongSound() {
+  if (!soundEnabled) {
+    return;
+  }
+  const sound = wrongSound.cloneNode();
+  sound.volume = 0.20;
+  sound.currentTime = 0;
+  sound.play();
+}
 
 function playSound(sound) {
  if (!soundEnabled) {
