@@ -117,7 +117,7 @@ function chooseMinimaxChessMove(moves) {
 
     const score =
       chessMinimax(
-        3,
+        6,
         false
       );
 
