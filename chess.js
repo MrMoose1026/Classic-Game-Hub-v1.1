@@ -108,6 +108,10 @@ chessWorker.onmessage = function(event) {
   );
 };
 
+chessWorker.onerror = function(error) {
+  console.error("Chess worker error:", error);
+};
+
 function initializeChess() {
   chessMoveHistory = []; 
   capturedBlack = [];
@@ -405,7 +409,15 @@ function handleChessClick(row, col) {
     return;
   }
 
+  if (
+    chessGameMode === "ai" &&
+    chessCurrentPlayer === chessAIPlayer
+  ) {
+    return;
+  }
+
   const piece = chessBoard[row][col];
+
 
   if (
     piece &&
