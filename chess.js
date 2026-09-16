@@ -9,10 +9,6 @@ function loadChess() {
     ${chessGameMode === "ai"
       ? `<div class="difficulty-label">Difficulty: ${capitalize(chessDifficulty)}</div>`
       : ""}
-<div class="chess-clock">
-  <div class="clock-player">
-    <div id="player2Time">05:00</div>
-</div>
   <div class="chess-layout">
     <div class="chess-side-panel captured-panel">
      <div>
@@ -26,7 +22,15 @@ function loadChess() {
   </div>
 
   <div class="chess-center">
+  <div class="chess-clock"></div>
+  <div class="clock-player"></div>
+    <div id="player2Time">05:00</div>
+
   <div id="chessBoard" class="chess-board"></div>
+
+   <div class="chess-clock"> </div>
+  <div class="clock-player"></div>
+    <div id="player1Time">05:00</div>
   </div>
 
   <div id="moveHistory" class="chess-side-panel">
@@ -34,9 +38,7 @@ function loadChess() {
   <div id="moveHistoryList"></div>
   </div>
   </div>
-  <div class="chess-clock"> 
-  <div class="clock-player">
-    <div id="player1Time">05:00</div>
+ 
   <div id="actionButtons" class="chess-actions">
     <button class="restart-btn" onclick="restartChess()">
      Restart Game
@@ -55,12 +57,31 @@ function loadChess() {
       : ""}
 </div>
   `);
-
+  
   initializeChess();
 }
 
+function preloadChessPieces() {
+  const colors = ["white", "black"];
+  const pieces = [
+    "king",
+    "queen",
+    "rook",
+    "bishop",
+    "knight",
+    "pawn"
+  ];
+
+  colors.forEach(color => {
+    pieces.forEach(piece => {
+      const img = new Image();
+      img.src = `img/chess/${color}-${piece}.png`;
+    });
+  });
+}
+
 const chessWorker =
-  new Worker("./chessWorker.js");
+  new Worker("chessWorker.js");
 
 chessWorker.onmessage = function(event) {
 
@@ -131,6 +152,8 @@ function initializeChess() {
   chessGameActive = true;
   chessHalfMoveClock = 0;
   chessPositionHistory = {};
+  preloadChessPieces();
+  resetChessClock();
   recordChessPosition();
   renderChessBoard();
 }
@@ -801,7 +824,7 @@ function chessAIMove() {
     move = chooseTacticalChessMove(moves);
 
   } else {
-
+    chessDifficulty === "hard"
   chessWorker.postMessage({
     board: chessBoard,
     aiPlayer: chessAIPlayer,
