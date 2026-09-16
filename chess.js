@@ -81,7 +81,7 @@ function preloadChessPieces() {
 }
 
 const chessWorker =
-  new Worker("chessWorker.js");
+  new Worker("./chessWorker.js");
 
 chessWorker.onmessage = function(event) {
 
