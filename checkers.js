@@ -667,7 +667,7 @@ function chooseMinimaxCheckersMove(moves) {
   for (let move of moves) {
     const undoData = simulateMove(move);
 
-    const score = minimax(6, false);
+    const score = minimax(3, false);
 
     undoMove(move, undoData);
 

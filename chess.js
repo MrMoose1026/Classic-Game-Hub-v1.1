@@ -85,10 +85,6 @@ const chessWorker =
   new Worker("./chessWorker.js");
 
 chessWorker.onmessage = function(event) {
-console.log(
-    "MAIN THREAD: worker returned",
-    event.data
-  );
   const move = event.data;
 
   if (
@@ -120,6 +116,8 @@ function initializeChess() {
   chessMoveHistory = []; 
   capturedBlack = [];
   capturedWhite = [];
+  renderChessMoveHistory();
+  renderCapturedPieces();
   chessBoard = [
     [
       { type: "rook", color: "black", hasMoved: false },
@@ -969,12 +967,9 @@ function chessAIMove() {
   ) {
     move = chooseTacticalChessMove(moves);
 
-  } else if (chessDifficulty === "hard") {
-    console.log(
-      "HARD AI: sending position to worker",
-      moves.length
-    );
-
+  } else if (
+    chessDifficulty === "hard"
+  ) {
 chessWorker.postMessage({
   board: chessBoard,
   aiPlayer: chessAIPlayer,

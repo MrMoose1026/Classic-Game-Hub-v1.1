@@ -841,6 +841,11 @@ saveProfiles();
  if (document.getElementById("chessScoreboard")) {
   updateChessScoreboard();
  }
+
+ const statsPanel = document.querySelector(".stats-panel");
+  if (statsPanel) {
+    showStatistics();
+  }
 }
 
 //MAIN MENU

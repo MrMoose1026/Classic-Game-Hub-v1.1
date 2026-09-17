@@ -1,4 +1,3 @@
-console.log("CHESS WORKER: loaded");
 let chessBoard = [];
 let chessAIPlayer = null;
 let lastChessMove = null;
@@ -13,7 +12,6 @@ const pieceValues = {
 };
 
 self.onmessage = function(event) {
-  console.log("CHESS WORKER: message received");
   const {
     board,
     aiPlayer,
@@ -27,10 +25,6 @@ self.onmessage = function(event) {
 
   const bestMove =
     chooseMinimaxChessMove(moves);
-console.log(
-  "CHESS WORKER: sending move",
-  bestMove
-);
   self.postMessage(bestMove);
 };
 
