@@ -86,9 +86,9 @@ const chessWorker =
 
 chessWorker.onmessage = function(event) {
 console.log(
-  "CHESS WORKER: sending move",
-  bestMove
-);
+    "MAIN THREAD: worker returned",
+    event.data
+  );
   const move = event.data;
 
   if (
