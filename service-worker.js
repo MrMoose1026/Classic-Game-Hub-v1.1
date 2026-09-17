@@ -1,4 +1,4 @@
-const CACHE_NAME = "cgh-v1.2";
+const CACHE_NAME = "cgh-v1.2.1";
 
 const FILES_TO_CACHE = [
   "./",
@@ -7,7 +7,6 @@ const FILES_TO_CACHE = [
   "./state.js",
   "./ui.js",
   "./chess.js",
-  "./chessWorker.js",
   "./checkers.js",
   "./connectfour.js",
   "./tictactoe.js",
@@ -37,33 +36,54 @@ self.addEventListener("install", event => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => cache.addAll(FILES_TO_CACHE))
+      .then(() => self.skipWaiting())
   );
 });
 
 self.addEventListener("activate", event => {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+    caches.keys()
+      .then(cacheNames => {
+        return Promise.all(
+          cacheNames.map(cacheName => {
+            if (cacheName !== CACHE_NAME) {
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      })
+      .then(() => self.clients.claim())
   );
 });
 
 self.addEventListener("fetch", event => {
+
+  // Do NOT intercept Web Worker scripts.
+  if (event.request.destination === "worker") {
+    return;
+  }
+
+  if (event.request.method !== "GET") {
+    return;
+  }
+
   event.respondWith(
     fetch(event.request)
       .then(response => {
-        const responseClone = response.clone();
 
-        caches.open(CACHE_NAME)
-          .then(cache => {
-            cache.put(event.request, responseClone);
-          });
+        if (response.ok) {
+          const responseClone = response.clone();
+
+          event.waitUntil(
+            caches.open(CACHE_NAME)
+              .then(cache => {
+                return cache.put(
+                  event.request,
+                  responseClone
+                );
+              })
+          );
+        }
 
         return response;
       })
