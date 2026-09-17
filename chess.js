@@ -58,6 +58,7 @@ function loadChess() {
 </div>
   `);
   
+  resetChessClock();
   initializeChess();
 }
 
@@ -84,7 +85,10 @@ const chessWorker =
   new Worker("./chessWorker.js");
 
 chessWorker.onmessage = function(event) {
-
+console.log(
+  "CHESS WORKER: sending move",
+  bestMove
+);
   const move = event.data;
 
   if (
@@ -835,14 +839,18 @@ function chessAIMove() {
   ) {
     move = chooseTacticalChessMove(moves);
 
-  } else {
-    chessDifficulty === "hard"
-  chessWorker.postMessage({
-    board: chessBoard,
-    aiPlayer: chessAIPlayer,
-    moves: moves,
-    lastMove: lastChessMove
-  });
+  } else if (chessDifficulty === "hard") {
+    console.log(
+      "HARD AI: sending position to worker",
+      moves.length
+    );
+
+chessWorker.postMessage({
+  board: chessBoard,
+  aiPlayer: chessAIPlayer,
+  moves: moves,
+  lastMove: lastChessMove
+});
 
   return;
 }
