@@ -274,15 +274,19 @@ function recordChessResult(result) {
 
   updateChessScoreboard();
 }
-
-function renderChessBoard() {
+function buildChessBoardDOM() {
   const boardElement =
     document.getElementById("chessBoard");
+
+  if (!boardElement) {
+    return;
+  }
 
   boardElement.innerHTML = "";
 
   for (let row = 0; row < 8; row++) {
     for (let col = 0; col < 8; col++) {
+
       const square =
         document.createElement("div");
 
@@ -294,85 +298,211 @@ function renderChessBoard() {
         square.classList.add("chess-dark");
       }
 
-      square.onclick = () => handleChessClick(row, col);
+      square.dataset.row = row;
+      square.dataset.col = col;
+
+      square.onclick = () =>
+        handleChessClick(row, col);
+
+      const pieceElement =
+        document.createElement("div");
+
+      pieceElement.classList.add("chess-piece");
+
+      const pieceImage =
+        document.createElement("img");
+
+      pieceImage.classList.add(
+        "chess-piece-image"
+      );
+
+      pieceElement.appendChild(pieceImage);
+
+      // Empty squares start with no visible piece.
+      pieceElement.style.display = "none";
+
+      square.appendChild(pieceElement);
+      boardElement.appendChild(square);
+    }
+  }
+}
+
+function renderChessBoard() {
+  const boardElement =
+    document.getElementById("chessBoard");
+
+  if (!boardElement) {
+    return;
+  }
+
+  // Build the DOM only once.
+  if (boardElement.children.length !== 64) {
+    buildChessBoardDOM();
+  }
+
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+
+      const index = row * 8 + col;
+      const square =
+        boardElement.children[index];
+
+      const pieceElement =
+        square.querySelector(".chess-piece");
+
+      const pieceImage =
+        pieceElement.querySelector(
+          ".chess-piece-image"
+        );
+
+      const piece =
+        chessBoard[row][col];
+
+      // ------------------------
+      // RESET DYNAMIC SQUARE CSS
+      // ------------------------
+
+      square.classList.remove(
+        "chess-selected",
+        "chess-highlight",
+        "chess-last-move",
+        "chess-check"
+      );
+
+      // Selected piece
       if (
         selectedChessPiece &&
         selectedChessPiece.row === row &&
         selectedChessPiece.col === col
       ) {
-        square.classList.add("chess-selected");
+        square.classList.add(
+          "chess-selected"
+        );
       }
+
+      // Legal move highlight
       const isHighlighted =
         highlightedChessMoves.some(move =>
           move.row === row &&
           move.col === col
         );
 
-        if (
-  lastChessMoveHighlight &&
-  (
-    (lastChessMoveHighlight.fromRow === row &&
-     lastChessMoveHighlight.fromCol === col) ||
-    (lastChessMoveHighlight.toRow === row &&
-     lastChessMoveHighlight.toCol === col)
-  )
-) {
-  square.classList.add("chess-last-move");
-}
       if (isHighlighted) {
-        square.classList.add("chess-highlight");
+        square.classList.add(
+          "chess-highlight"
+        );
       }
-      const piece = chessBoard[row][col];
 
-      if (piece) {
-        const pieceElement =
-          document.createElement("div");
-        if (
-          lastChessAnimationMove &&
-          lastChessAnimationMove.toRow === row &&
-          lastChessAnimationMove.toCol === col
-        ) {
-          const rowMove =
-            lastChessMove.fromRow - lastChessMove.toRow;
-
-          const colMove =
-            lastChessMove.fromCol - lastChessMove.toCol;
-
-          pieceElement.style.setProperty("--move-y", `${rowMove * 50}px`);
-          pieceElement.style.setProperty("--move-x", `${colMove * 50}px`);
-
-          pieceElement.classList.add("chess-slide-piece");
-
-          pieceElement.addEventListener("animationend", () => {
-            lastChessAnimationMove = null;
-          });
-        }
-
-        pieceElement.classList.add("chess-piece");
-
-        pieceElement.innerHTML = ` 
-          <img 
-            src="img/chess/${piece.color}-${piece.type}.png"
-          class="chess-piece-image"
-          >
-          `;
-
-        square.appendChild(pieceElement);
-        if (piece.color === "white") {
-          pieceElement.classList.add("white-piece");
-        } else {
-          pieceElement.classList.add("black-piece");
-        }
+      // Last move highlight
+      if (
+        lastChessMoveHighlight &&
+        (
+          (
+            lastChessMoveHighlight.fromRow === row &&
+            lastChessMoveHighlight.fromCol === col
+          ) ||
+          (
+            lastChessMoveHighlight.toRow === row &&
+            lastChessMoveHighlight.toCol === col
+          )
+        )
+      ) {
+        square.classList.add(
+          "chess-last-move"
+        );
       }
+
+      // ------------------------
+      // UPDATE PIECE
+      // ------------------------
+
+      pieceElement.classList.remove(
+        "white-piece",
+        "black-piece",
+        "chess-slide-piece"
+      );
+
+      if (!piece) {
+        pieceElement.style.display = "none";
+        continue;
+      }
+
+      pieceElement.style.display = "";
+
+      if (piece.color === "white") {
+        pieceElement.classList.add(
+          "white-piece"
+        );
+      } else {
+        pieceElement.classList.add(
+          "black-piece"
+        );
+      }
+
+      const imagePath =
+        `img/chess/${piece.color}-${piece.type}.png`;
+
+      // IMPORTANT:
+      // Only change src when the piece actually changes.
+      if (
+        pieceImage.getAttribute("src") !==
+        imagePath
+      ) {
+        pieceImage.setAttribute(
+          "src",
+          imagePath
+        );
+      }
+
+      // ------------------------
+      // MOVE ANIMATION
+      // ------------------------
 
       if (
-        piece &&
+        lastChessAnimationMove &&
+        lastChessAnimationMove.toRow === row &&
+        lastChessAnimationMove.toCol === col
+      ) {
+        const rowMove =
+          lastChessMove.fromRow -
+          lastChessMove.toRow;
+
+        const colMove =
+          lastChessMove.fromCol -
+          lastChessMove.toCol;
+
+        pieceElement.style.setProperty(
+          "--move-y",
+          `${rowMove * 50}px`
+        );
+
+        pieceElement.style.setProperty(
+          "--move-x",
+          `${colMove * 50}px`
+        );
+
+        pieceElement.classList.add(
+          "chess-slide-piece"
+        );
+
+        pieceElement.addEventListener(
+          "animationend",
+          () => {
+            lastChessAnimationMove = null;
+          },
+          { once: true }
+        );
+      }
+
+      // King in check
+      if (
         piece.type === "king" &&
         isKingInCheck(piece.color)
       ) {
-        square.classList.add("chess-check");
+        square.classList.add(
+          "chess-check"
+        );
       }
-      boardElement.appendChild(square);
     }
   }
 }
