@@ -1340,7 +1340,90 @@ color: #4b7bec;
   cursor: pointer;
 }
 
+/* Placement spots beside the chain */
+.domino-game .domino-end {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 8px;
+  border: 2px dashed currentColor;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font-size: 24px;
+  touch-action: manipulation;
+}
+
+.domino-game .domino-end:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.domino-game .domino-end:not(:disabled) {
+  border-color: #ffd166;
+  color: #ffd166;
+  background: rgba(255, 209, 102, 0.12);
+  cursor: pointer;
+}
+
+.domino-game .domino-end:focus-visible {
+  outline: 3px solid #4b7bec;
+  outline-offset: 3px;
+}
+
+.domino-game .domino-start {
+  font-size: 16px;
+}
+
+.domino-flight-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  pointer-events: none;
+}
+
+.domino-game .domino-flying {
+  pointer-events: none;
+  will-change: transform;
+  transform-origin: center;
+}
+
+/* Smaller tiles on phones */
 @media (max-width: 650px) {
+  .domino-game .domino-chain,
+  .domino-game .domino-hand {
+    gap: 8px;
+    padding: 12px 6px;
+  }
+
+  .domino-game .domino-tile {
+    padding: 4px;
+    border-radius: 8px;
+  }
+
+  .domino-game .domino-half {
+    grid-template-columns: repeat(3, 6px);
+    grid-template-rows: repeat(3, 6px);
+    gap: 3px;
+    padding: 5px;
+  }
+
+  .domino-game .domino-half i {
+    width: 6px;
+    height: 6px;
+  }
+
+  .domino-game .domino-selected {
+    outline-offset: 2px;
+  }
+
+  .domino-game .domino-hand .domino-tile {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
   .game-grid {
     grid-template-columns: 1fr;
     width: 90%;

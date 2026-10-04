@@ -1150,6 +1150,9 @@ updateProfileButton();
 const dominoTileSound = new Audio("img/tile-soft.mp3");
 dominoTileSound.volume = 0.35;
 
+const dominoLossSound = new Audio("img/loss.mp3");
+dominoLossSound.volume = 0.5;
+
 function playDominoSound(source) {
   if (!soundEnabled) return;
 

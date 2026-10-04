@@ -14,10 +14,22 @@ const dominoes = {
   timer: null,
   revealed: true,
 
+   animating: false,
+  moveVersion: 0,
+  flight: null,
+
   stop() {
     clearTimeout(this.timer);
     this.timer = null;
     this.active = false;
+    this.moveVersion++;
+    this.animating = false;
+
+    if (this.flight) {
+      this.flight.animation.cancel();
+      this.flight.layer.remove();
+      this.flight = null;
+    }
   },
 
   options(hand = this.hands[this.turn]) {
@@ -93,9 +105,10 @@ getDominoesScores(this.scoreProfile);
     this.schedule();
   },
 
-  canAct() {
+    canAct() {
     return (
       this.active &&
+      !this.animating &&
       this.revealed &&
       !(this.mode === "ai" && this.turn === 1)
     );
@@ -108,14 +121,31 @@ getDominoesScores(this.scoreProfile);
     this.render();
   },
 
-  play(index, side) {
+  async play(index, side) {
     const legal = this.options().some(
       move => move.index === index && move.side === side
     );
 
-    if (!this.active || !legal) return;
+    if (!this.active || this.animating || !legal) return;
 
-    const tile = this.hands[this.turn]
+    const version = ++this.moveVersion;
+    const player = this.turn;
+
+    // Capture the starting position before updating the hand.
+    // The AI's tile comes from near its hidden-hand message.
+    const source = document.querySelectorAll(
+      "#gameArea .domino-hand .domino-tile"
+    )[index];
+
+    const sourceRect = source?.getBoundingClientRect();
+    const chainRect = document.querySelector(
+      "#gameArea .domino-chain"
+    )?.getBoundingClientRect();
+
+    this.animating = true;
+    this.selected = null;
+
+    const tile = this.hands[player]
       .splice(index, 1)[0]
       .slice();
 
@@ -137,15 +167,126 @@ getDominoesScores(this.scoreProfile);
       this.chain.push(tile);
     }
 
-        playDominoSound(dominoTileSound);
     this.passes = 0;
 
-    if (!this.hands[this.turn].length) {
-      this.finish(this.turn);
+    // Reserve the actual landing position before the tile flies.
+    this.render();
+
+    const chainTiles = document.querySelectorAll(
+      "#gameArea .domino-chain .domino-tile"
+    );
+
+    const target = side === "left"
+      ? chainTiles[0]
+      : chainTiles[chainTiles.length - 1];
+
+    try {
+      await this.animateTile(target, sourceRect, chainRect);
+        } catch (error) {
+      if (version === this.moveVersion && this.active) {
+        console.error("Domino animation failed:", error);
+      }
+    }
+
+    if (version !== this.moveVersion || !this.active) return;
+
+    this.animating = false;
+    playDominoSound(dominoTileSound);
+
+    if (!this.hands[player].length) {
+      this.finish(player);
+    } else {
+      this.next();
+    }
+  },
+
+  async animateTile(target, sourceRect, chainRect) {
+        if (!target || typeof target.animate !== "function") {
       return;
     }
 
-    this.next();
+    const destination = target.getBoundingClientRect();
+
+    const startX = sourceRect
+      ? sourceRect.left + sourceRect.width / 2
+      : destination.left + destination.width / 2;
+
+    const startY = sourceRect
+      ? sourceRect.top + sourceRect.height / 2
+      : (chainRect?.bottom ?? destination.bottom) + 70;
+
+    const dx = startX -
+      (destination.left + destination.width / 2);
+
+    const dy = startY -
+      (destination.top + destination.height / 2);
+
+    // Use the placed tile's orientation throughout the flight.
+    const ghost = target.cloneNode(true);
+    ghost.removeAttribute("aria-label");
+    ghost.classList.remove("domino-selected", "domino-playable");
+    ghost.classList.add("domino-flying");
+
+    Object.assign(ghost.style, {
+      position: "fixed",
+      left: `${destination.left}px`,
+      top: `${destination.top}px`,
+      width: `${destination.width}px`,
+      height: `${destination.height}px`,
+      boxSizing: "border-box",
+      margin: "0"
+    });
+
+    const layer = document.createElement("div");
+    layer.className = "domino-game domino-flight-layer";
+    layer.setAttribute("aria-hidden", "true");
+    layer.appendChild(ghost);
+    document.body.appendChild(layer);
+
+    target.style.visibility = "hidden";
+
+    const animation = ghost.animate(
+      [
+        {
+          transform: `translate(${dx}px, ${dy}px)
+                      rotate(0deg) scale(1)`,
+          offset: 0
+        },
+        {
+          transform: `translate(${dx * 0.85}px, ${dy - 28}px)
+                      rotate(40deg) scale(1.08)`,
+          offset: 0.2
+        },
+        {
+          transform: `translate(${dx * 0.35}px, ${dy * 0.35 - 35}px)
+                      rotate(240deg) scale(1.06)`,
+          offset: 0.65
+        },
+        {
+          transform: "translate(0, 0) rotate(360deg) scale(1)",
+          offset: 1
+        }
+      ],
+      {
+        duration: 580,
+        easing: "ease-in-out",
+        fill: "forwards"
+      }
+    );
+
+    const flight = { animation, layer };
+    this.flight = flight;
+
+    try {
+      await animation.finished;
+    } finally {
+      target.style.visibility = "";
+      layer.remove();
+
+      if (this.flight === flight) {
+        this.flight = null;
+      }
+    }
   },
 
   place(side) {
@@ -320,11 +461,12 @@ finish(winner, blocked = false) {
     this.scoreProfile
   );
 
-  if (
-    winner >= 0 &&
-    (this.mode === "local" || winner === 0)
-  ) {
-    playDominoSound(winSound);
+    if (winner >= 0) {
+    if (this.mode === "ai" && winner === 1) {
+      playDominoSound(dominoLossSound);
+    } else {
+      playDominoSound(winSound);
+    }
   }
     clearTimeout(this.timer);
     this.revealed = true;
@@ -417,7 +559,10 @@ finish(winner, blocked = false) {
           move.side === side
       );
 
-    setGameAreaContent(`
+    const gameArea = document.getElementById("gameArea");
+    gameArea.classList.remove("page-enter");
+
+    gameArea.innerHTML = `
       <section class="domino-game">
         <h2>Dominoes</h2>
 
@@ -433,18 +578,46 @@ finish(winner, blocked = false) {
           ${this.hands[1].length}
         </p>
 
-        <div class="domino-chain" aria-label="Played tiles">
+                <div class="domino-chain" aria-label="Played tiles">
           ${
             this.chain.length
-              ? this.chain.map(tile => `
+              ? `
+                <button
+                  class="domino-end"
+                  onclick="dominoes.place('left')"
+                  aria-label="Place selected tile at the left end"
+                  ${this.canAct() && canPlace("left") ? "" : "disabled"}
+                >＋</button>
+
+                ${this.chain.map(tile => `
                   <span
                     class="domino-tile"
                     aria-label="${tile[0]}–${tile[1]}"
                   >
                     ${this.tile(tile)}
                   </span>
-                `).join("")
-              : "<p>Play any tile to begin.</p>"
+                `).join("")}
+
+                <button
+                  class="domino-end"
+                  onclick="dominoes.place('right')"
+                  aria-label="Place selected tile at the right end"
+                  ${this.canAct() && canPlace("right") ? "" : "disabled"}
+                >＋</button>
+              `
+              : `
+                <button
+                  class="domino-end domino-start"
+                  onclick="dominoes.place('right')"
+                  ${this.canAct() && canPlace("right") ? "" : "disabled"}
+                >
+                  ${
+                    this.selected === null
+                      ? "Select a tile to begin"
+                      : "Place tile here"
+                  }
+                </button>
+              `
           }
         </div>
 
@@ -513,19 +686,6 @@ finish(winner, blocked = false) {
           this.canAct()
             ? `
               <div class="domino-actions">
-                <button
-                  onclick="dominoes.place('left')"
-                  ${canPlace("left") ? "" : "disabled"}
-                >
-                  Play left
-                </button>
-
-                <button
-                  onclick="dominoes.place('right')"
-                  ${canPlace("right") ? "" : "disabled"}
-                >
-                  ${this.chain.length ? "Play right" : "Play tile"}
-                </button>
 
                 <button
                   onclick="dominoes.draw()"
@@ -564,7 +724,8 @@ finish(winner, blocked = false) {
             The player holding the highest double starts;
             without doubles, the highest pip total starts.
             Match a tile to either open end.
-            Select a highlighted tile, then choose an end.
+            Select a highlighted tile, then tap a highlighted
+plus at an open end of the chain.
             When you cannot play, draw until you can.
             Pass only when the boneyard is empty.
             Empty your hand to win.
@@ -575,7 +736,7 @@ finish(winner, blocked = false) {
           </p>
         </details>
       </section>
-    `);
+    `;
   }
 };
 
