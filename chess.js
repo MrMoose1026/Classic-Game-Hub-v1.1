@@ -58,8 +58,14 @@ function loadChess() {
 </div>
   `);
   
-  resetChessClock();
-  initializeChess();
+initializeChess();
+
+chessClockStarted = true;
+
+document.getElementById("chessStatus").textContent =
+  `${getChessPlayerName("white")}'s Turn`;
+
+startClock(1);
 }
 
 function preloadChessPieces() {
@@ -90,8 +96,11 @@ chessWorker.onmessage = function(event) {
   if (
     !move ||
     !chessGameActive ||
-    chessCurrentPlayer !== chessAIPlayer
-  ) {
+    chessCurrentPlayer !== chessAIPlayer ||
+    chessGameMode !== "ai" ||
+    chessDifficulty !== "hard"
+  ) 
+  {
     return;
   }
 
@@ -113,6 +122,11 @@ chessWorker.onerror = function(error) {
 };
 
 function initializeChess() {
+stockfishMoveHistory = [];
+lastChessMove = null;
+lastChessMoveHighlight = null;
+lastChessAnimationMove = null;
+highlightedChessMoves = [];
   chessMoveHistory = []; 
   capturedBlack = [];
   capturedWhite = [];
@@ -164,17 +178,85 @@ function initializeChess() {
   renderChessBoard();
 }
 
+let chessTimeMinutes = 5;
+let chessIncrementSeconds = 0;
+let chessClockStarted = false;
+
 let player1Time = 5 * 60;
 let player2Time = 5 * 60;
 let activePlayer = null;
 let clockInterval = null;
 let lastClockUpdate = null;
 
+async function startSelectedChessGame() {
+  const timeSelect =
+    document.getElementById("chessTimeSelect");
+
+  const incrementSelect =
+    document.getElementById("chessIncrementSelect");
+
+  const button =
+    document.getElementById("chessStartButton");
+
+  if (!timeSelect || !incrementSelect || !button) return;
+  if (button.disabled) return;
+
+  const minutes = Number(timeSelect.value);
+  const increment = Number(incrementSelect.value);
+
+  chessTimeMinutes = [0, 3, 5, 10, 30].includes(minutes)
+    ? minutes : 5;
+
+  chessIncrementSeconds =
+    [0, 1, 2, 3, 5, 10].includes(increment)
+      ? increment : 0;
+
+  button.disabled = true;
+
+  try {
+    if (
+      chessGameMode === "ai" &&
+      chessDifficulty === "expert"
+    ) {
+      button.textContent = "Loading Stockfish…";
+      await prepareStockfish();
+    }
+
+    // Don't start if the player left this screen.
+    if (
+      document.getElementById("chessStartButton") !== button
+    ) {
+      return;
+    }
+
+    loadChess();
+
+  } catch (error) {
+    if (
+      document.getElementById("chessStartButton") === button
+    ) {
+      cancelStockfishSearch();
+      button.disabled = false;
+      button.textContent =
+        "Engine unavailable — check files and retry";
+
+      console.error(error);
+    }
+  }
+}
+
 function syncChessClock(now = performance.now()) {
   if (!chessGameActive) return false;
-  if (activePlayer === null) return true;
 
-  const elapsed = (now - lastClockUpdate) / 1000;
+  if (
+    !chessClockStarted ||
+    chessTimeMinutes === 0 ||
+    activePlayer === null
+  ) {
+    return true;
+  }
+
+  const elapsed = Math.max(0, (now - lastClockUpdate) / 1000);
   lastClockUpdate = now;
 
   const player = activePlayer;
@@ -187,8 +269,7 @@ function syncChessClock(now = performance.now()) {
 
   updateChessClockDisplay();
 
-  const remaining =
-    player === 1 ? player1Time : player2Time;
+  const remaining = player === 1 ? player1Time : player2Time;
 
   if (remaining > 0) return true;
 
@@ -198,20 +279,34 @@ function syncChessClock(now = performance.now()) {
 }
 
 function startClock(player) {
+  if (!chessClockStarted || !chessGameActive) return false;
+
   const now = performance.now();
 
-  // Charge the previous player before switching clocks.
   if (!syncChessClock(now)) return false;
 
   activePlayer = player;
   lastClockUpdate = now;
 
-  if (clockInterval === null) {
-    clockInterval = setInterval(syncChessClock, 100);
+  if (chessTimeMinutes !== 0 && clockInterval === null) {
+    clockInterval = setInterval(() => syncChessClock(), 100);
   }
 
   updateChessClockDisplay();
   return true;
+}
+
+// Call once when a move is fully completed.
+function finishChessClockTurn() {
+  if (chessTimeMinutes !== 0) {
+    if (chessCurrentPlayer === "black") {
+      player1Time += chessIncrementSeconds;
+    } else {
+      player2Time += chessIncrementSeconds;
+    }
+  }
+
+  startClock(chessCurrentPlayer === "white" ? 1 : 2);
 }
 
 function stopChessClock() {
@@ -226,24 +321,47 @@ function formatTime(seconds) {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
 
-  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`;
+  return `${minutes}:${String(remainingSeconds).padStart(2, "0")}`;
 }
 
 function updateChessClockDisplay() {
-  const player1Display = document.getElementById("player1Time");
-  const player2Display = document.getElementById("player2Time");
+  const whiteDisplay = document.getElementById("player1Time");
+  const blackDisplay = document.getElementById("player2Time");
 
-  if (!player1Display || !player2Display) return;
+  if (!whiteDisplay || !blackDisplay) return;
 
-  player1Display.textContent = formatTime(player1Time);
-  player2Display.textContent = formatTime(player2Time);
+  whiteDisplay.textContent =
+    chessTimeMinutes === 0 ? "∞" : formatTime(player1Time);
+
+  blackDisplay.textContent =
+    chessTimeMinutes === 0 ? "∞" : formatTime(player2Time);
 }
 
 function resetChessClock() {
   stopChessClock();
-  lastClockUpdate = null;
-  player1Time = 5 * 60;
-  player2Time = 5 * 60;
+  chessClockStarted = false;
+
+  player1Time = chessTimeMinutes * 60;
+  player2Time = chessTimeMinutes * 60;
+
+  pendingPromotion = null;
+  document.getElementById("promotionOverlay")
+    ?.classList.add("hidden");
+
+  [
+    "chessTimeSelect",
+    "chessIncrementSelect",
+    "chessStartButton"
+  ].forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.disabled = false;
+  });
+
+  const status = document.getElementById("chessStatus");
+
+  if (status) {
+    status.textContent = "Choose your time control, then press Start Game.";
+  }
 
   updateChessClockDisplay();
 }
@@ -537,9 +655,15 @@ function getChessSymbol(piece) {
 
 function handleChessClick(row, col) {
 
-  if (!chessGameActive) {
-    return;
-  }
+  if (
+  !chessGameActive ||
+  !chessClockStarted ||
+  pendingPromotion
+) {
+  return;
+}
+
+if (!syncChessClock()) return;
 
   if (
     chessGameMode === "ai" &&
@@ -649,11 +773,9 @@ function moveChessPiece(targetRow, targetCol) {
       move.row === targetRow &&
       move.col === targetCol
     );
-    const nextClockPlayer =
-  chessCurrentPlayer === "white" ? 2 : 1;
-
-// Check the mover's time before changing the board.
-if (!startClock(nextClockPlayer)) {
+// Keep the mover's clock running until the move,
+// including any promotion choice, is completed.
+if (!chessClockStarted || !syncChessClock()) {
   selectedChessPiece = null;
   highlightedChessMoves = [];
   renderChessBoard();
@@ -728,6 +850,7 @@ if (isPromotion) {
   renderChessBoard();
   return;
 }
+recordStockfishMove();
   playQuietBlockSound();
 const moveText =
   `${capitalize(piece.type)}: ` +
@@ -744,11 +867,8 @@ renderChessMoveHistory();
     ? "black"
     : "white";
 
-if (chessCurrentPlayer === "white") {
-  startClock(1);
-} else {
-  startClock(2);
-}
+finishChessClockTurn();
+
  const repetitionCount =
     recordChessPosition();
 
@@ -783,7 +903,7 @@ if (chessCurrentPlayer === "white") {
     document.getElementById("chessStatus")
       .textContent = "AI Thinking...";
 
-    setTimeout(chessAIMove, 1000);
+    scheduleChessAI();
   }
 
 
@@ -808,17 +928,6 @@ if (chessCurrentPlayer === "white") {
         : `${getChessPlayerName(chessCurrentPlayer)}'s Turn`;
 
   renderChessBoard();
-}
-
-function resetChessClock() {
-  clearInterval(clockInterval);
-  clockInterval = null;
-
-  player1Time = 5 * 60;
-  player2Time = 5 * 60;
-  activePlayer = null;
-
-  updateChessClockDisplay();
 }
 
 function renderCapturedPieces() {
@@ -905,7 +1014,15 @@ function promotePawnIfNeeded(row, col) {
     color: piece.color
   };
 
+  if (
+  stockfishPromotionType &&
+  chessGameMode === "ai" &&
+  piece.color === chessAIPlayer
+) {
+  completePromotion(stockfishPromotionType);
+} else {
   showPromotionMenu(piece.color);
+}
 
   return true;
 }
@@ -946,39 +1063,43 @@ function getAllLegalChessMoves(color) {
 }
 
 function chessAIMove() {
-  if (!chessGameActive) {
+  if (
+    !chessGameActive ||
+    !chessClockStarted ||
+    chessGameMode !== "ai" ||
+    chessCurrentPlayer !== chessAIPlayer ||
+    !document.getElementById("chessBoard")
+  ) {
     return;
   }
 
-  const moves =
-    getAllLegalChessMoves(chessAIPlayer);
-
-  if (moves.length === 0) {
+  if (chessDifficulty === "expert") {
+    requestStockfishMove();
     return;
   }
+
+  const moves = getAllLegalChessMoves(chessAIPlayer);
+
+  if (moves.length === 0) return;
 
   let move;
 
   if (chessDifficulty === "easy") {
     move = chooseRandomChessMove(moves);
 
-  } else if (
-    chessDifficulty === "medium"
-  ) {
+  } else if (chessDifficulty === "medium") {
     move = chooseTacticalChessMove(moves);
 
-  } else if (
-    chessDifficulty === "hard"
-  ) {
-chessWorker.postMessage({
-  board: chessBoard,
-  aiPlayer: chessAIPlayer,
-  moves: moves,
-  lastMove: lastChessMove
-});
+  } else {
+    chessWorker.postMessage({
+      board: chessBoard,
+      aiPlayer: chessAIPlayer,
+      moves,
+      lastMove: lastChessMove
+    });
 
-  return;
-}
+    return;
+  }
 
   selectedChessPiece = {
     row: move.fromRow,
@@ -1127,18 +1248,67 @@ function chessMoveLeavesKingInCheck(
   toCol
 ) {
   const piece = chessBoard[fromRow][fromCol];
-  const capturedPiece = chessBoard[toRow][toCol];
+  if (!piece) return true;
 
-  chessBoard[toRow][toCol] = piece;
-  chessBoard[fromRow][fromCol] = null;
+  const changes = [];
 
-  const inCheck =
-    isKingInCheck(piece.color);
+  function place(row, col, value) {
+    changes.push({
+      row,
+      col,
+      previous: chessBoard[row][col]
+    });
 
-  chessBoard[fromRow][fromCol] = piece;
-  chessBoard[toRow][toCol] = capturedPiece;
+    chessBoard[row][col] = value;
+  }
 
-  return inCheck;
+  const enPassant =
+    piece.type === "pawn" &&
+    fromCol !== toCol &&
+    chessBoard[toRow][toCol] === null &&
+    lastChessMove?.pieceType === "pawn" &&
+    lastChessMove.pieceColor !== piece.color &&
+    Math.abs(
+      lastChessMove.toRow - lastChessMove.fromRow
+    ) === 2 &&
+    lastChessMove.toRow === fromRow &&
+    lastChessMove.toCol === toCol;
+
+  try {
+    place(toRow, toCol, piece);
+    place(fromRow, fromCol, null);
+
+    if (enPassant) {
+      place(fromRow, toCol, null);
+    }
+
+    if (
+      piece.type === "king" &&
+      fromRow === toRow &&
+      Math.abs(toCol - fromCol) === 2
+    ) {
+      const rookCol = toCol > fromCol ? 7 : 0;
+      const rookTarget = toCol > fromCol ? 5 : 3;
+
+      place(
+        fromRow,
+        rookTarget,
+        chessBoard[fromRow][rookCol]
+      );
+
+      place(fromRow, rookCol, null);
+    }
+
+    return isKingInCheck(piece.color);
+
+  } finally {
+    for (let i = changes.length - 1; i >= 0; i--) {
+      const change = changes[i];
+
+      chessBoard[change.row][change.col] =
+        change.previous;
+    }
+  }
 }
 
 function isSquareAttacked(row, col, byColor) {
@@ -1583,14 +1753,24 @@ function showPromotionMenu(color) {
 }
 
 function completePromotion(type) {
-  if (!pendingPromotion) {
-    return;
-  }
+  if (
+  !pendingPromotion ||
+  !chessGameActive ||
+  !syncChessClock()
+) {
+  return;
+}
 
   const piece =
     chessBoard[pendingPromotion.row][pendingPromotion.col];
 
   piece.type = type;
+  recordStockfishMove({
+  queen: "q",
+  rook: "r",
+  bishop: "b",
+  knight: "n"
+}[type]);
 
   pendingPromotion = null;
 
@@ -1601,16 +1781,10 @@ function completePromotion(type) {
     chessCurrentPlayer === "white"
       ? "black"
       : "white";
-
+finishChessClockTurn();
   if (checkChessGameOver(chessCurrentPlayer)) {
     renderChessBoard();
     return;
-  }
-
-  if (chessCurrentPlayer === "white") {
-    startClock(1);
-  } else {
-    startClock(2);
   }
 
   renderChessBoard();
@@ -1623,7 +1797,7 @@ function completePromotion(type) {
     document.getElementById("chessStatus")
       .textContent = "AI Thinking...";
 
-    setTimeout(chessAIMove, 1000);
+    scheduleChessAI();
   }
 }
 
@@ -1757,6 +1931,5 @@ function checkChessGameOver(color) {
 }
 
 function restartChess() {
-  initializeChess();
-  resetChessClock();
+  showChessTimeScreen();
 }

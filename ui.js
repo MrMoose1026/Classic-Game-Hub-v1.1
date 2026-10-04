@@ -610,195 +610,79 @@ function switchProfile(name) {
 }
 
 function getGamesPlayed() {
-
- const ticGamesPlayed =
-  ticScores.ai.win +
-  ticScores.ai.loss +
-  ticScores.ai.draw +
-  ticScores.local.win +
-  ticScores.local.loss +
-  ticScores.local.draw;
-
- const connectGamesPlayed =
-    connectScores.ai.win +
-    connectScores.ai.loss +
-    connectScores.ai.draw +
-    connectScores.local.win +
-    connectScores.local.loss +
-    connectScores.local.draw;
-
-   const checkersGamesPlayed =
-    checkersScores.ai.win +
-    checkersScores.ai.loss +
-    checkersScores.ai.draw +
-    checkersScores.local.win +
-    checkersScores.local.loss +
-    checkersScores.local.draw;
-
-   const chessGamesPlayed =
-    chessScores.ai.win +
-    chessScores.ai.loss +
-    chessScores.ai.draw +
-    chessScores.local.win +
-    chessScores.local.loss +
-    chessScores.local.draw
-  
-  return ticGamesPlayed +
-    connectGamesPlayed +
-    checkersGamesPlayed +
-    chessGamesPlayed;
+  return getStatGames().reduce(
+    (total, [, scores]) => total + countCompletedGames(scores),
+    0
+  );
 }
 
 function getFavoriteGame() {
-
-  const gameTotals = {
-    "Tic-Tac-Toe":
-      ticScores.ai.win +
-      ticScores.ai.loss +
-      ticScores.ai.draw +
-      ticScores.local.win +
-      ticScores.local.loss +
-      ticScores.local.draw,
-
-    "Connect Four":
-      connectScores.ai.win +
-    connectScores.ai.loss +
-    connectScores.ai.draw +
-    connectScores.local.win +
-    connectScores.local.loss +
-    connectScores.local.draw,
-
-    "Checkers":
-    checkersScores.ai.win +
-    checkersScores.ai.loss +
-    checkersScores.ai.draw +
-    checkersScores.local.win +
-    checkersScores.local.loss +
-    checkersScores.local.draw,
-    
-    "Chess":
-    chessScores.ai.win +
-    chessScores.ai.loss +
-    chessScores.ai.draw +
-    chessScores.local.win +
-    chessScores.local.loss +
-    chessScores.local.draw
-  };
-
   let favorite = "None";
   let mostPlayed = 0;
 
-  for (const game in gameTotals) {
+  for (const [name, scores] of getStatGames()) {
+    const played = countCompletedGames(scores);
 
-    if (gameTotals[game] > mostPlayed) {
-      mostPlayed = gameTotals[game];
-      favorite = game;
+    if (played > mostPlayed) {
+      mostPlayed = played;
+      favorite = name;
     }
   }
 
-  return mostPlayed > 0
-    ? favorite
-    : "None";
+  return favorite;
 }
 
 
 //STATISTICS
 function showStatistics() {
-showAppTitle();
- document.querySelector(".menu").classList.add("hidden");
- document.getElementById("backButton").style.display = "inline-block";
+  showAppTitle();
 
- const totalGames = getGamesPlayed();
+  document.querySelector(".menu").classList.add("hidden");
+  document.getElementById("backButton").style.display =
+    "inline-block";
 
- document.getElementById("gameArea").innerHTML = `
- <h2>${getProfileDisplayName()}'s Statistics</h2>
+  const cards = getStatGames().map(([name, scores]) => `
+    <div class="stat-card">
+      <h3>${name}</h3>
 
- <div class="stats-panel">
- 
- <h3>Total Games Played</h3>
- <p>${totalGames}</p>
+      <div class="stat-matchups">
+        <div class="stat-matchup">
+          <h4>VS AI</h4>
+          <p>Wins: ${scores.ai.win}</p>
+          <p>Losses: ${scores.ai.loss}</p>
+          <p>Draws: ${scores.ai.draw}</p>
+        </div>
 
- <div class="stat-grid">
- <div class="stat-card">
-  <h3>Tic-Tac-Toe</h3>
-
-  <div class="stat-matchups">
-    <div class="stat-matchup">
-      <h4>VS AI</h4>
-      <p>Wins: ${ticScores.ai.win}</p>
-      <p>Losses: ${ticScores.ai.loss}</p>
-      <p>Draws: ${ticScores.ai.draw}</p>
+        <div class="stat-matchup">
+          <h4>VS Player</h4>
+          <p>Wins: ${scores.local.win}</p>
+          <p>Losses: ${scores.local.loss}</p>
+          <p>Draws: ${scores.local.draw}</p>
+          ${name === "Dominoes"
+            ? "<small>Results for Player 1</small>"
+            : ""}
+        </div>
+      </div>
     </div>
+  `).join("");
 
-    <div class="stat-matchup">
-      <h4>VS Player</h4>
-      <p>Wins: ${ticScores.local.win}</p>
-      <p>Losses: ${ticScores.local.loss}</p>
-      <p>Draws: ${ticScores.local.draw}</p>
+  setGameAreaContent(`
+    <h2><span id="statisticsProfileName"></span>'s Statistics</h2>
+
+    <div class="stats-panel">
+      <h3>Total Games Played</h3>
+      <p>${getGamesPlayed()}</p>
+
+      <div class="stat-grid">
+        ${cards}
+      </div>
     </div>
-  </div>
-</div>
+  `);
 
- <div class="stat-card">
-  <h3>Connect Four</h3>
-  <div class="stat-matchups">
-
-    <div class="stat-matchup">
-  <h4>VS AI</h4>
-  <p>Wins: ${connectScores.ai.win}</p>
-  <p>Losses: ${connectScores.ai.loss}</p>
-  <p>Draws: ${connectScores.ai.draw}</p>
-  </div>
-
-    <div class="stat-matchup">
-  <h4>VS Player</h4>
-  <p>Wins: ${connectScores.local.win}</p>
-  <p>Losses: ${connectScores.local.loss}</p>
-  <p>Draws: ${connectScores.local.draw}</p>
-</div>
-</div>
-</div>
-
- <div class="stat-card">
-  <h3>Checkers</h3>
-  <div class="stat-matchups">
-
-    <div class="stat-matchup">
-  <h4>VS AI</h4>
-  <p>Wins: ${checkersScores.ai.win}</p>
-  <p>Losses: ${checkersScores.ai.loss}</p>
-  <p>Draws: ${checkersScores.ai.draw}</p>
-</div>
-<div class="stat-matchup">
-  <h4>VS Player</h4>
-  <p>Wins: ${checkersScores.local.win}</p>
-  <p>Losses: ${checkersScores.local.loss}</p>
-  <p>Draws: ${checkersScores.local.draw}</p>
-</div>
-</div>
-</div>
-
- <div class="stat-card">
-  <h3>Chess</h3>
-  <div class="stat-matchups">
-
-    <div class="stat-matchup">
-      <h4>VS AI</h4>
-      <p>Wins: ${chessScores.ai.win}</p>
-      <p>Losses: ${chessScores.ai.loss}</p>
-      <p>Draws: ${chessScores.ai.draw}</p>
-    </div>
-
-    <div class="stat-matchup">
-      <h4>VS Player</h4>
-  <p>Wins: ${chessScores.local.win}</p>
-  <p>Losses: ${chessScores.local.loss}</p>
-  <p>Draws: ${chessScores.local.draw}</p>
-</div>
-</div>
- </div>
- `;
+  document.getElementById("statisticsProfileName").textContent =
+    getProfileDisplayName();
 }
+
 function resetAllScores() {
  ticScores = {
     ai: { win: 0, loss: 0, draw: 0 },
@@ -824,6 +708,12 @@ profiles[currentProfile].ticScores = ticScores;
 profiles[currentProfile].connectScores = connectScores;
 profiles[currentProfile].checkersScores = checkersScores;
 profiles[currentProfile].chessScores = chessScores;
+profiles[currentProfile].dominoesScores = {
+  ai: { win: 0, loss: 0, draw: 0 },
+  local: { win: 0, loss: 0, draw: 0 }
+};
+
+updateProfileSummary();
 
 saveProfiles();
 
@@ -917,9 +807,14 @@ function selectGameMode(mode) {
     chessGameMode = mode;
   }
 
+  if (pendingGame === "dominoes") {
+    dominoes.mode = mode;
+  }
+
   if (
     mode === "ai" &&
     (
+      pendingGame === "dominoes" ||
       pendingGame === "connect4" ||
       pendingGame === "checkers" ||
       pendingGame === "chess"
@@ -927,6 +822,8 @@ function selectGameMode(mode) {
   ) {
     showDifficultyScreen();
 
+    } else if (pendingGame === "chess") {
+    showChessTimeScreen();
   } else {
     launchPendingGame();
   }
@@ -959,55 +856,129 @@ function showDifficultyScreen() {
 
  </button>
 
+${pendingGame === "checkers"
+  ? `<button onclick="selectDifficulty('adaptive')">
+       Adaptive
+     </button>`
+  : ""}
+
+  ${pendingGame === "chess"
+  ? `<button onclick="selectDifficulty('expert')">
+       Expert — Stockfish
+     </button>`
+  : ""}
+
  </div>
  `);
 }
 
 function selectDifficulty(difficulty) {
+  if (pendingGame === "checkers") {
+    checkersDifficulty = difficulty;
+    localStorage.setItem("checkersDifficulty", difficulty);
+  }
 
- if (pendingGame === "checkers") {
+  if (pendingGame === "connect4") {
+    connectDifficulty = difficulty;
+    localStorage.setItem("connectDifficulty", difficulty);
+  }
 
- checkersDifficulty = difficulty;
+  if (pendingGame === "chess") {
+    chessDifficulty = difficulty;
+    localStorage.setItem("chessDifficulty", difficulty);
+  }
 
- localStorage.setItem(
- "checkersDifficulty",
- difficulty
- );
- }
+  if (pendingGame === "dominoes") {
+    dominoes.difficulty = difficulty;
+  }
 
- if (pendingGame === "connect4") {
-
- connectDifficulty = difficulty;
-
- localStorage.setItem(
- "connectDifficulty",
- difficulty
- );
- }
-
- if (pendingGame === "chess") {
-  chessDifficulty = difficulty;
-
-  localStorage.setItem(
-    "chessDifficulty",
-    difficulty
-  );
+  if (pendingGame === "chess") {
+    showChessTimeScreen();
+  } else {
+    launchPendingGame();
+  }
 }
 
- launchPendingGame();
+function showChessTimeScreen() {
+  cancelStockfishSearch();
+  stopChessClock();
+  chessClockStarted = false;
+  chessGameActive = false;
+
+  hideAppTitle();
+
+  setGameAreaContent(`
+    <h2>Select Time Control</h2>
+
+    <p>
+      ${chessGameMode === "ai"
+        ? `Vs AI • ${capitalize(chessDifficulty)}`
+        : "Vs Local Player"}
+    </p>
+
+    <div class="mode-select-screen"
+         style="flex-direction:column;align-items:center;gap:18px;">
+
+      <label for="chessTimeSelect">
+        Time per player
+      </label>
+
+      <select id="chessTimeSelect"
+              onchange="document.getElementById('chessIncrementSelect').disabled = this.value === '0'">
+        ${[3, 5, 10, 30, 0].map(minutes => `
+          <option value="${minutes}"
+            ${minutes === chessTimeMinutes ? "selected" : ""}>
+            ${minutes === 0
+              ? "Unlimited"
+              : `${minutes} minutes`}
+          </option>
+        `).join("")}
+      </select>
+
+      <label for="chessIncrementSelect">
+        Seconds added after each move
+      </label>
+
+      <select id="chessIncrementSelect"
+              ${chessTimeMinutes === 0 ? "disabled" : ""}>
+        ${[0, 1, 2, 3, 5, 10].map(seconds => `
+          <option value="${seconds}"
+            ${seconds === chessIncrementSeconds ? "selected" : ""}>
+            ${seconds === 0
+              ? "No increment"
+              : `${seconds} seconds`}
+          </option>
+        `).join("")}
+      </select>
+
+       <button id="chessStartButton"
+        onclick="startSelectedChessGame()">
+  Start Game
+</button>
+
+      <button onclick="${
+        chessGameMode === "ai"
+          ? "showDifficultyScreen()"
+          : "showModeSelectScreen()"
+      }">
+        Back
+      </button>
+    </div>
+  `);
 }
 
 function launchPendingGame() {
-
-if (pendingGame === "tic") {
-  loadTicTacToe();
-} else if (pendingGame === "connect4") {
-  loadConnectFour();
-} else if (pendingGame === "checkers") {
-  loadCheckers();
-} else if (pendingGame === "chess") {
-  loadChess();
-}
+  if (pendingGame === "tic") {
+    loadTicTacToe();
+  } else if (pendingGame === "connect4") {
+    loadConnectFour();
+  } else if (pendingGame === "checkers") {
+    loadCheckers();
+  } else if (pendingGame === "chess") {
+    loadChess();
+  } else if (pendingGame === "dominoes") {
+    loadDominoes();
+  }
 }
 
 function setGameAreaContent(html) {
@@ -1026,6 +997,11 @@ function setGameAreaContent(html) {
 }
 
 function showMenu() {
+dominoes.stop();
+cancelStockfishSearch();
+stopChessClock();
+chessClockStarted = false;
+chessGameActive = false;
 showAppTitle();
  document.querySelector(".menu").classList.remove("hidden");
  document.getElementById("backButton").style.display = "none";
@@ -1169,3 +1145,58 @@ function hideConfirmation() {
 }
 initializeAvatarPicker();
 updateProfileButton();
+
+// DOMINOES STATS AND SOUNDS
+const dominoTileSound = new Audio("img/tile-soft.mp3");
+dominoTileSound.volume = 0.35;
+
+function playDominoSound(source) {
+  if (!soundEnabled) return;
+
+  const sound = source.cloneNode();
+  sound.volume = source.volume;
+  sound.play().catch(() => {});
+}
+
+function getDominoesScores(name = currentProfile) {
+  ensureProfileExists(name);
+
+  if (!profiles[name].dominoesScores) {
+    profiles[name].dominoesScores = {
+      ai: { win: 0, loss: 0, draw: 0 },
+      local: { win: 0, loss: 0, draw: 0 }
+    };
+
+    saveProfiles();
+  }
+
+  return profiles[name].dominoesScores;
+}
+
+function recordDominoesResult(winner, mode, name) {
+  const scores = getDominoesScores(name);
+  const result = winner < 0
+    ? "draw"
+    : winner === 0 ? "win" : "loss";
+
+  scores[mode][result]++;
+  saveProfiles();
+  updateProfileSummary();
+}
+
+function getStatGames() {
+  return [
+    ["Tic-Tac-Toe", ticScores],
+    ["Connect Four", connectScores],
+    ["Checkers", checkersScores],
+    ["Chess", chessScores],
+    ["Dominoes", getDominoesScores()]
+  ];
+}
+
+function countCompletedGames(scores) {
+  return ["ai", "local"].reduce((total, mode) => {
+    const results = scores[mode];
+    return total + results.win + results.loss + results.draw;
+  }, 0);
+}

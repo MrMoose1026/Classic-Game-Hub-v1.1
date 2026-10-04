@@ -8,7 +8,13 @@ function loadCheckers() {
  ${getCheckersPlayerName(checkersCurrentPlayer)}'s Turn
  </h3>
 ${checkersGameMode === "ai"
-      ? `<div class="difficulty-label">Difficulty: ${capitalize(checkersDifficulty)}</div>`
+      ? `<div id="checkersDifficultyLabel" class="difficulty-label">
+     Difficulty: ${
+       checkersDifficulty === "adaptive"
+         ? `Adaptive • Level ${getAdaptiveCheckersLevel()}`
+         : capitalize(checkersDifficulty)
+     }
+   </div>`
       : ""}
  <div id="checkersBoard" class="checkers-board"></div>
 
@@ -32,6 +38,7 @@ function setCheckersDifficulty(difficulty) {
 }
 
 function initializeCheckers() {
+  beginAdaptiveCheckersGame();
   checkersBoard = [];
   highlightedMoves = [];
   for (let row = 0; row < 8; row++) {
@@ -79,6 +86,7 @@ function recordCheckersResult(result) {
     : "local";
 
   checkersScores[mode][result]++;
+  updateAdaptiveCheckersResult(result);
 
   profiles[currentProfile].checkersScores = checkersScores;
   saveProfiles();
@@ -176,9 +184,15 @@ function renderCheckersBoard() {
 
 function handleCheckerClick(row, col) {
 
-  if (!checkersGameActive) {
-    return;
-  }
+  if (
+  !checkersGameActive ||
+  (
+    checkersGameMode === "ai" &&
+    checkersCurrentPlayer === checkersAIPlayer
+  )
+) {
+  return;
+}
 
   const piece = checkersBoard[row][col];
 
@@ -560,37 +574,45 @@ function finishCheckerTurn() {
 }
 
 function checkersAIMove() {
-
-  if (!checkersGameActive) {
+  if (
+    !checkersGameActive ||
+    checkersGameMode !== "ai" ||
+    checkersCurrentPlayer !== checkersAIPlayer ||
+    !document.getElementById("checkersBoard")
+  ) {
     return;
   }
 
-  const moves = getLegalMoves(checkersAIPlayer);
+  let moves = getLegalMoves(checkersAIPlayer);
+
+  // During a multi-jump, keep using the capturing piece.
+  if (selectedChecker) {
+    moves = moves.filter(move =>
+      move.capture &&
+      move.fromRow === selectedChecker.row &&
+      move.fromCol === selectedChecker.col
+    );
+  }
 
   if (moves.length === 0) {
+    document.getElementById("checkersStatus").textContent =
+      `${getCheckersPlayerName("red")} Wins!`;
 
-    document.getElementById("checkersStatus")
-      .textContent = `${getCheckersPlayerName(checkersCurrentPlayer)} Wins!`;
-
+    recordCheckersResult("win");
     playSound(winSound);
-
     checkersGameActive = false;
-
     return;
   }
 
   let move;
 
-  if (checkersDifficulty === "easy") {
-
+  if (checkersDifficulty === "adaptive") {
+    move = chooseAdaptiveCheckersMove(moves);
+  } else if (checkersDifficulty === "easy") {
     move = chooseRandomCheckersMove(moves);
-
   } else if (checkersDifficulty === "medium") {
-
     move = chooseTacticalCheckersMove(moves);
-
   } else {
-
     move = chooseMinimaxCheckersMove(moves);
   }
 
@@ -1041,6 +1063,237 @@ function minimax(depth, isMaximizing) {
   }
 }
 
+// ADAPTIVE CHECKERS
+let adaptiveCheckersGame = null;
+
+function getAdaptiveCheckersLevel() {
+  const saved = profiles[currentProfile]?.checkersAdaptive?.level;
+
+  return Number.isInteger(saved)
+    ? Math.max(1, Math.min(6, saved))
+    : 3;
+}
+
+function beginAdaptiveCheckersGame() {
+  adaptiveCheckersGame =
+    checkersGameMode === "ai" &&
+    checkersDifficulty === "adaptive"
+      ? {
+          profile: currentProfile,
+          level: getAdaptiveCheckersLevel(),
+          recorded: false
+        }
+      : null;
+}
+
+function updateAdaptiveCheckersResult(result) {
+  const game = adaptiveCheckersGame;
+
+  if (
+    !game ||
+    game.recorded ||
+    !["win", "loss", "draw"].includes(result)
+  ) {
+    return;
+  }
+
+  game.recorded = true;
+
+  const profile = profiles[game.profile];
+  if (!profile) return;
+
+  const previous = profile.checkersAdaptive;
+
+  const data = {
+    level: game.level,
+    streak: Number.isInteger(previous?.streak)
+      ? Math.max(-1, Math.min(1, previous.streak))
+      : 0
+  };
+
+  if (result === "draw") {
+    data.streak = 0;
+  } else {
+    const direction = result === "win" ? 1 : -1;
+
+    data.streak = Math.sign(data.streak) === direction
+      ? data.streak + direction
+      : direction;
+
+    if (Math.abs(data.streak) >= 2) {
+      data.level = Math.max(
+        1,
+        Math.min(6, data.level + direction)
+      );
+
+      data.streak = 0;
+    }
+  }
+
+  profile.checkersAdaptive = data;
+  saveProfiles();
+}
+
+function chooseAdaptiveCheckersMove(moves) {
+  const level =
+    adaptiveCheckersGame?.level ??
+    getAdaptiveCheckersLevel();
+
+  if (level === 1) {
+    return chooseRandomCheckersMove(moves);
+  }
+
+  if (level === 2) {
+    return chooseTacticalCheckersMove(moves);
+  }
+
+  if (moves.length === 1) return moves[0];
+
+  const deadline = performance.now() + 80;
+  const expired = {};
+  let bestMove = moves[0];
+
+  function checkBudget() {
+    if (performance.now() >= deadline) throw expired;
+  }
+
+  function followUp(move, color) {
+    if (!move.capture) return null;
+
+    const jumps = getLegalMoves(color).filter(next =>
+      next.capture &&
+      next.fromRow === move.toRow &&
+      next.fromCol === move.toCol
+    );
+
+    return jumps.length
+      ? { row: move.toRow, col: move.toCol }
+      : null;
+  }
+
+  function search(depth, color, forcedPiece, alpha, beta) {
+    checkBudget();
+
+    let legal = getLegalMoves(color);
+
+    if (forcedPiece) {
+      legal = legal.filter(move =>
+        move.capture &&
+        move.fromRow === forcedPiece.row &&
+        move.fromCol === forcedPiece.col
+      );
+    }
+
+    if (!legal.length) {
+      return color === checkersAIPlayer
+        ? -10000 - depth
+        : 10000 + depth;
+    }
+
+    // Finish a forced jump sequence before evaluating.
+    if (depth <= 0 && !forcedPiece) {
+      return evaluateCheckersBoard();
+    }
+
+    const maximizing = color === checkersAIPlayer;
+    let best = maximizing ? -Infinity : Infinity;
+
+    for (const move of legal) {
+      checkBudget();
+
+      const undo = simulateMove(move);
+      let score;
+
+      try {
+        const continuation = followUp(move, color);
+
+        const nextColor = continuation
+          ? color
+          : color === "red" ? "black" : "red";
+
+        score = search(
+          depth - 1,
+          nextColor,
+          continuation,
+          alpha,
+          beta
+        );
+      } finally {
+        undoMove(move, undo);
+      }
+
+      best = maximizing
+        ? Math.max(best, score)
+        : Math.min(best, score);
+
+      if (maximizing) {
+        alpha = Math.max(alpha, best);
+      } else {
+        beta = Math.min(beta, best);
+      }
+
+      if (beta <= alpha) break;
+    }
+
+    return best;
+  }
+
+  // Keep the deepest fully completed search result.
+  for (let depth = 1; depth <= level + 1; depth++) {
+    let bestScore = -Infinity;
+    let bestMoves = [];
+
+    try {
+      for (const move of moves) {
+        checkBudget();
+
+        const undo = simulateMove(move);
+        let score;
+
+        try {
+          const continuation = followUp(
+            move,
+            checkersAIPlayer
+          );
+
+          score = search(
+            depth - 1,
+            continuation ? checkersAIPlayer : "red",
+            continuation,
+            -Infinity,
+            Infinity
+          );
+        } finally {
+          undoMove(move, undo);
+        }
+
+        if (score > bestScore) {
+          bestScore = score;
+          bestMoves = [move];
+        } else if (score === bestScore) {
+          bestMoves.push(move);
+        }
+      }
+
+      bestMove = chooseRandomCheckersMove(bestMoves);
+    } catch (error) {
+      if (error !== expired) throw error;
+      break;
+    }
+  }
+
+  return bestMove;
+}
+
 function restartCheckers() {
   initializeCheckers();
+
+  const label = document.getElementById("checkersDifficultyLabel");
+
+  if (label && checkersGameMode === "ai") {
+    label.textContent =
+      checkersDifficulty === "adaptive"
+        ? `Difficulty: Adaptive • Level ${getAdaptiveCheckersLevel()}`
+        : `Difficulty: ${capitalize(checkersDifficulty)}`;
+  }
 }

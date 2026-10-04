@@ -203,7 +203,7 @@ margin-top: 25px;
 
 .game-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(280px, 360px));
+    grid-template-columns: repeat(3, minmax(280px, 360px));
     gap: 40px 80px; 
     justify-content: center;
     max-width: 800px;
@@ -1273,6 +1273,71 @@ color: #4b7bec;
   width: 22px;
   height: 26px;
   flex: 0 0 auto;
+}
+
+/* DOMINOES */
+.domino-chain,
+.domino-hand {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 18px;
+}
+
+.domino-game .domino-tile {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  flex-shrink: 0;
+  width: auto;
+  min-width: 0;
+  height: auto;
+  margin: 0;
+  padding: 6px;
+  border: 2px solid #b8b8b8;
+  border-radius: 10px;
+  background: #fff8e7;
+  color: #151515;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+}
+
+.domino-half {
+  display: grid;
+  grid-template-columns: repeat(3, 10px);
+  grid-template-rows: repeat(3, 10px);
+  gap: 4px;
+  padding: 8px;
+}
+
+.domino-half + .domino-half {
+  border-left: 2px solid #555;
+}
+
+.domino-half i {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: transparent;
+}
+
+.domino-half i.pip {
+  background: #151515;
+}
+
+.domino-game .domino-playable {
+  border-color: #4b7bec;
+}
+
+.domino-game .domino-selected {
+  outline: 3px solid #ffd166;
+  outline-offset: 3px;
+}
+
+.domino-hand button.domino-tile {
+  cursor: pointer;
 }
 
 @media (max-width: 650px) {

@@ -221,6 +221,9 @@ Sound: On
   <div class="game-card" onclick="startGame('connect4')"><h2>Connect Four</h2> Drop pieces and connect four</div>
   <div class="game-card" onclick="startGame('checkers')"><h2>Checkers</h2> Capture, King, and Conquer</div>
   <div class="game-card" onclick="startGame('chess')"><h2>Chess</h2> Checkmate to win</div>
+  <div class="game-card" onclick="startGame('dominoes')"><h2>Dominoes</h2> Match tiles and clear your hand</div>
+  <div class="game-card" onclick="showSmokeSignal('Not yet..')"><h2>Backgammon</h2>Coming soon
+</div>
 </div>
 
 </div>
@@ -241,11 +244,18 @@ Back to Menu
 <script src="tictactoe.js"></script>
 <script src="connectfour.js"></script>
 <script src="checkers.js"></script>
+<script src="stockfishAI.js"></script>
 <script src="chess.js"></script>
 <script src="script.js"></script>
+<script src="dominoes.js"></script>
 <script>
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("service-worker.js");
+    navigator.serviceWorker.getRegistration().then(async (registration) => {
+      if (registration) {
+        await registration.unregister();
+        window.location.reload();
+      }
+    });
   }
 </script>
 </body>
