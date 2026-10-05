@@ -382,7 +382,7 @@ function recordChessResult(result) {
   const mode = chessGameMode === "ai"
     ? "ai"
     : "local";
-
+playGameResultSound(mode, result);
   chessScores[mode][result]++;
 
   profiles[currentProfile].chessScores = chessScores;
@@ -1830,25 +1830,29 @@ function resignChessGame() {
 }
 
 function resignationConfirmed() {
-  const winner =
-    chessCurrentPlayer === "white"
+  if (!chessGameActive) return;
+
+  // Against AI, the person pressing Resign is always the human.
+  const winner = chessGameMode === "ai"
+    ? chessAIPlayer
+    : chessCurrentPlayer === "white"
       ? "black"
       : "white";
 
-  document.getElementById("chessStatus")
-    .textContent =
+  document.getElementById("chessStatus").textContent =
     `${getChessPlayerName(winner)} Wins by Resignation!`;
 
-  playSound(winSound);
-
-  if (winner === "white") {
-   recordChessResult("win");
-  }
-  if (winner === "black") {
-    recordChessResult("loss");
-  }
   chessGameActive = false;
   stopChessClock();
+
+  recordChessResult(
+    chessGameMode === "ai"
+      ? "loss"
+      : winner === "white"
+        ? "win"
+        : "loss"
+  );
+
   renderChessBoard();
 }
 
@@ -1861,6 +1865,7 @@ function hasOnlyKing(color) {
 }
 
 function handleChessTimeout(flaggedPlayer) {
+  if (!chessGameActive) return;
   stopChessClock();
 
   const opponentColor =
@@ -1878,8 +1883,8 @@ function handleChessTimeout(flaggedPlayer) {
     document.getElementById("chessStatus").textContent =
       `${winner} wins on time!`;
 
-    recordChessResult(
-      flaggedPlayer === 1 ? "black" : "white"
+        recordChessResult(
+      flaggedPlayer === 1 ? "loss" : "win"
     );
   }
 
@@ -1903,7 +1908,6 @@ function checkChessGameOver(color) {
       .textContent =
       `Checkmate! ${getChessPlayerName(winner)} Wins!`;
 
-    playSound(winSound);
     if (winner === "white") {
       recordChessResult("win");
     }

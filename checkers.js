@@ -84,7 +84,7 @@ function recordCheckersResult(result) {
   const mode = checkersGameMode === "ai"
     ? "ai"
     : "local";
-
+playGameResultSound(mode, result);
   checkersScores[mode][result]++;
   updateAdaptiveCheckersResult(result);
 
@@ -548,7 +548,6 @@ function finishCheckerTurn() {
     } else {
       recordCheckersResult("loss");
     }
-    playSound(winSound);
     checkersGameActive = false;
     renderCheckersBoard();
     return;
@@ -599,7 +598,6 @@ function checkersAIMove() {
       `${getCheckersPlayerName("red")} Wins!`;
 
     recordCheckersResult("win");
-    playSound(winSound);
     checkersGameActive = false;
     return;
   }
@@ -779,7 +777,6 @@ function checkCheckersWinner() {
     document.getElementById("checkersStatus")
       .textContent = `${getCheckersPlayerName(checkersCurrentPlayer)} Wins!`;
 
-    playSound(winSound);
     recordCheckersResult("loss");
     checkersGameActive = false;
     return true;
@@ -789,7 +786,6 @@ function checkCheckersWinner() {
     document.getElementById("checkersStatus")
       .textContent = `${getCheckersPlayerName(checkersCurrentPlayer)} Wins!`;
 
-    playSound(winSound);
     recordCheckersResult("win");
     checkersGameActive = false;
     return true;

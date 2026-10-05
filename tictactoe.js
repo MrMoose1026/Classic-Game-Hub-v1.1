@@ -38,7 +38,7 @@ function recordTicResult(result) {
   const mode = ticGameMode === "ai"
     ? "ai"
     : "local";
-
+playGameResultSound(mode, result);
   ticScores[mode][result]++;
 
   profiles[currentProfile].ticScores = ticScores;
@@ -95,7 +95,6 @@ function makeMove(index) {
   `${getTicPlayerName(currentPlayer)} Wins!`;
 
     recordTicResult("win");
-    playSound(winSound);
 
     gameActive = false;
     return;
@@ -213,7 +212,6 @@ function finishAITurn() {
     document.getElementById("statusText").textContent =
   `${getTicPlayerName(currentPlayer)} Wins!`;
     recordTicResult("loss");
-    playSound(winSound);
     gameActive = false;
     return;
   }

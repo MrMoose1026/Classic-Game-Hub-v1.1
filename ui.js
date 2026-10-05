@@ -1153,6 +1153,19 @@ dominoTileSound.volume = 0.35;
 const dominoLossSound = new Audio("img/loss.mp3");
 dominoLossSound.volume = 0.5;
 
+function playGameResultSound(mode, result) {
+  if (!soundEnabled || result === "draw") return;
+
+  const source =
+    mode === "ai" && result === "loss"
+      ? dominoLossSound
+      : winSound;
+
+  const sound = source.cloneNode();
+  sound.volume = source.volume;
+  sound.play().catch(() => {});
+}
+
 function playDominoSound(source) {
   if (!soundEnabled) return;
 

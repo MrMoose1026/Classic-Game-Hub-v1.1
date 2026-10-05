@@ -86,7 +86,7 @@ function recordConnectResult(result) {
   const mode = connectGameMode === "ai"
     ? "ai"
     : "local";
-
+playGameResultSound(mode, result);
   connectScores[mode][result]++;
 
   profiles[currentProfile].connectScores = connectScores;
@@ -137,7 +137,6 @@ function dropPiece(col) {
           .textContent =
           `${getConnectPlayerName(connectCurrentPlayer)} Wins!`;
         recordConnectResult("win");
-        playSound(winSound);
         connectGameActive = false;
 
         return;
@@ -397,7 +396,6 @@ function finishConnectAITurn(row, col) {
       .textContent =
         `${getConnectPlayerName(currentPlayer)} Wins!`;
     recordConnectResult("loss");
-    playSound(winSound);
     connectGameActive = false;
 
     return;
