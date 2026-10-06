@@ -1,3 +1,99 @@
+// All players share the same animation/commit pipeline.
+let chessAnimationRunning = false;
+let chessMoveSession = 0;
+let activeChessAnimation = null;
+
+function cancelChessAnimation() {
+  chessMoveSession++;
+  activeChessAnimation?.cancel();
+  activeChessAnimation = null;
+  chessAnimationRunning = false;
+}
+
+async function animateChessMove(move) {
+  const board = document.getElementById("chessBoard");
+  if (!board || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  const flights = [];
+  const hiddenPieces = [];
+  const animations = [];
+  const transfers = [move];
+  if (move.castle) {
+    transfers.push({
+      fromRow: move.fromRow,
+      fromCol: move.castle === "kingside" ? 7 : 0,
+      row: move.row,
+      col: move.castle === "kingside" ? 5 : 3
+    });
+  }
+
+  function cleanup() {
+    animations.forEach(animation => animation.cancel());
+    flights.forEach(flight => flight.remove());
+    hiddenPieces.forEach(piece => { piece.style.visibility = ""; });
+  }
+
+  const currentAnimation = { cancel: cleanup };
+  activeChessAnimation = currentAnimation;
+  try {
+    for (const transfer of transfers) {
+      const sourceSquare = board.children[transfer.fromRow * 8 + transfer.fromCol];
+      const targetSquare = board.children[transfer.row * 8 + transfer.col];
+      const source = sourceSquare.querySelector(".chess-piece-image");
+      if (!source || !source.animate) continue;
+
+      const rect = source.getBoundingClientRect();
+      const from = sourceSquare.getBoundingClientRect();
+      const to = targetSquare.getBoundingClientRect();
+      const flight = source.cloneNode(true);
+      flight.className = "chess-moving-piece";
+      Object.assign(flight.style, {
+        left: `${rect.left}px`, top: `${rect.top}px`,
+        width: `${rect.width}px`, height: `${rect.height}px`
+      });
+      document.body.appendChild(flight);
+      flights.push(flight);
+      const original = source.parentElement;
+      original.style.visibility = "hidden";
+      hiddenPieces.push(original);
+      animations.push(flight.animate([
+        { transform: "translate(0, 0)" },
+        { transform: `translate(${to.left - from.left}px, ${to.top - from.top}px)` }
+      ], { duration: 240, easing: "ease-in-out", fill: "forwards" }));
+    }
+    // Keep the captured piece visible until the attacker arrives.
+    await Promise.all(animations.map(animation => animation.finished.catch(() => {})));
+  } finally {
+    cleanup();
+    if (activeChessAnimation === currentAnimation) activeChessAnimation = null;
+  }
+}
+
+const chessPieceLetters = { king: "K", queen: "Q", rook: "R", bishop: "B", knight: "N" };
+
+// Build the base SAN before moving, while alternative legal origins still exist.
+function buildChessSAN(move, piece) {
+  if (move.castle) return move.castle === "kingside" ? "O-O" : "O-O-O";
+  const capture = !!chessBoard[move.row][move.col] || !!move.enPassant;
+  const destination = chessSquareName(move.row, move.col);
+  if (piece.type === "pawn") {
+    return (capture ? chessSquareName(move.fromRow, move.fromCol)[0] + "x" : "") + destination;
+  }
+  const alternatives = getAllLegalChessMoves(piece.color).filter(candidate =>
+    candidate.row === move.row && candidate.col === move.col &&
+    (candidate.fromRow !== move.fromRow || candidate.fromCol !== move.fromCol) &&
+    chessBoard[candidate.fromRow][candidate.fromCol]?.type === piece.type
+  );
+  let origin = "";
+  if (alternatives.length) {
+    const square = chessSquareName(move.fromRow, move.fromCol);
+    const sameFile = alternatives.some(candidate => candidate.fromCol === move.fromCol);
+    const sameRank = alternatives.some(candidate => candidate.fromRow === move.fromRow);
+    origin = !sameFile ? square[0] : !sameRank ? square[1] : square;
+  }
+  return chessPieceLetters[piece.type] + origin + (capture ? "x" : "") + destination;
+}
+
 //CHESS
 function loadChess() {
   hideAppTitle();
@@ -96,6 +192,7 @@ chessWorker.onmessage = function(event) {
   if (
     !move ||
     !chessGameActive ||
+    chessAnimationRunning ||
     chessCurrentPlayer !== chessAIPlayer ||
     chessGameMode !== "ai" ||
     chessDifficulty !== "hard"
@@ -122,10 +219,10 @@ chessWorker.onerror = function(error) {
 };
 
 function initializeChess() {
+  cancelChessAnimation();
 stockfishMoveHistory = [];
 lastChessMove = null;
 lastChessMoveHighlight = null;
-lastChessAnimationMove = null;
 highlightedChessMoves = [];
   chessMoveHistory = []; 
   capturedBlack = [];
@@ -256,6 +353,11 @@ function syncChessClock(now = performance.now()) {
     return true;
   }
 
+  // A visual transition is not thinking time for either player.
+  if (chessAnimationRunning) {
+    lastClockUpdate = now;
+    return true;
+  }
   const elapsed = Math.max(0, (now - lastClockUpdate) / 1000);
   lastClockUpdate = now;
 
@@ -444,6 +546,7 @@ function buildChessBoardDOM() {
 }
 
 function renderChessBoard() {
+  if (chessAnimationRunning) return;
   const boardElement =
     document.getElementById("chessBoard");
 
@@ -570,46 +673,6 @@ function renderChessBoard() {
         );
       }
 
-      // ------------------------
-      // MOVE ANIMATION
-      // ------------------------
-
-      if (
-        lastChessAnimationMove &&
-        lastChessAnimationMove.toRow === row &&
-        lastChessAnimationMove.toCol === col
-      ) {
-        const rowMove =
-          lastChessMove.fromRow -
-          lastChessMove.toRow;
-
-        const colMove =
-          lastChessMove.fromCol -
-          lastChessMove.toCol;
-
-        pieceElement.style.setProperty(
-          "--move-y",
-          `${rowMove * 50}px`
-        );
-
-        pieceElement.style.setProperty(
-          "--move-x",
-          `${colMove * 50}px`
-        );
-
-        pieceElement.classList.add(
-          "chess-slide-piece"
-        );
-
-        pieceElement.addEventListener(
-          "animationend",
-          () => {
-            lastChessAnimationMove = null;
-          },
-          { once: true }
-        );
-      }
-
       // King in check
       if (
         piece.type === "king" &&
@@ -658,6 +721,7 @@ function handleChessClick(row, col) {
   if (
   !chessGameActive ||
   !chessClockStarted ||
+  chessAnimationRunning ||
   pendingPromotion
 ) {
   return;
@@ -753,181 +817,102 @@ function isKingInCheck(color) {
   );
 }
 
-function moveChessPiece(targetRow, targetCol) {
+async function moveChessPiece(targetRow, targetCol) {
+  if (chessAnimationRunning || pendingPromotion || !selectedChessPiece || !chessGameActive) return;
   const startRow = selectedChessPiece.row;
   const startCol = selectedChessPiece.col;
-
-  if (
-    chessMoveLeavesKingInCheck(
-      startRow,
-      startCol,
-      targetRow,
-      targetCol
-    )
-  ) {
-    return;
-  }
   const piece = chessBoard[startRow][startCol];
-  const legalMove =
-    highlightedChessMoves.find(move =>
-      move.row === targetRow &&
-      move.col === targetCol
-    );
-// Keep the mover's clock running until the move,
-// including any promotion choice, is completed.
-if (!chessClockStarted || !syncChessClock()) {
-  selectedChessPiece = null;
-  highlightedChessMoves = [];
-  renderChessBoard();
-  return;
-}
-  const capturedPiece =
-    chessBoard[targetRow][targetCol];
-    if (capturedPiece) {
+  const legalMove = getAllLegalChessMoves(chessCurrentPlayer).find(move =>
+    move.fromRow === startRow && move.fromCol === startCol &&
+    move.row === targetRow && move.col === targetCol
+  );
+  if (!piece || piece.color !== chessCurrentPlayer || !legalMove) return;
+  if (!chessClockStarted || !syncChessClock()) return;
 
-    if (capturedPiece.color === "white") {
-        capturedWhite.push(capturedPiece);
-    } else {
-        capturedBlack.push(capturedPiece);
+  const notation = buildChessSAN(legalMove, piece);
+  const capturedPiece = legalMove.enPassant
+    ? chessBoard[legalMove.capturedPawnRow][legalMove.capturedPawnCol]
+    : chessBoard[targetRow][targetCol];
+  const boardElement = document.getElementById("chessBoard");
+  const session = chessMoveSession;
+  const promotionType = stockfishPromotionType;
+  chessAnimationRunning = true;
+  try {
+    await animateChessMove(legalMove);
+    if (session !== chessMoveSession || !chessGameActive ||
+        document.getElementById("chessBoard") !== boardElement || !syncChessClock()) return;
+
+    lastChessMove = {
+      pieceType: piece.type, pieceColor: piece.color,
+      fromRow: startRow, fromCol: startCol,
+      toRow: targetRow, toCol: targetCol, notation
+    };
+    lastChessMoveHighlight = {
+      fromRow: startRow, fromCol: startCol,
+      toRow: targetRow, toCol: targetCol
+    };
+    chessBoard[targetRow][targetCol] = piece;
+    chessBoard[startRow][startCol] = null;
+    if (legalMove.enPassant) {
+      chessBoard[legalMove.capturedPawnRow][legalMove.capturedPawnCol] = null;
     }
-    renderCapturedPieces();
-};
-
-
-  const isPawnMove =
-    piece.type === "pawn";
-
-  const isCapture =
-    capturedPiece !== null ||
-    (legalMove && legalMove.enPassant);
-
-  lastChessMove = {
-    pieceType: piece.type,
-    pieceColor: piece.color,
-    fromRow: startRow,
-    fromCol: startCol,
-    toRow: targetRow,
-    toCol: targetCol
-  };
-
-  lastChessAnimationMove = {
-    fromRow: startRow,
-    fromCol: startCol,
-    toRow: targetRow,
-    toCol: targetCol
-  };
-
-lastChessMoveHighlight = {
-  fromRow: startRow,
-  fromCol: startCol,
-  toRow: targetRow,
-  toCol: targetCol
-};  
-
-  chessBoard[targetRow][targetCol] = piece;
-  chessBoard[startRow][startCol] = null;
-  if (legalMove && legalMove.enPassant) {
-    chessBoard[legalMove.capturedPawnRow][legalMove.capturedPawnCol] = null;
-  }
-  if (legalMove && legalMove.castle) {
-    moveCastlingRook(targetRow, legalMove.castle);
-  }
-  if (
-    piece.type === "king" ||
-    piece.type === "rook"
-  ) {
-    piece.hasMoved = true;
-  }
-  if (isPawnMove || isCapture) {
-    chessHalfMoveClock = 0;
-  } else {
-    chessHalfMoveClock++;
-  }
-  const isPromotion =
-  promotePawnIfNeeded(targetRow, targetCol);
-
-if (isPromotion) {
-  renderChessBoard();
-  return;
-}
-recordStockfishMove();
-  playQuietBlockSound();
-const moveText =
-  `${capitalize(piece.type)}: ` +
-  `${chessSquareName(targetRow, targetCol)}`;
-
-chessMoveHistory.push(moveText);
-
-renderChessMoveHistory();
-  selectedChessPiece = null;
-  highlightedChessMoves = [];
-
-  chessCurrentPlayer =
-  chessCurrentPlayer === "white"
-    ? "black"
-    : "white";
-
-finishChessClockTurn();
-
- const repetitionCount =
-    recordChessPosition();
-
-  if (repetitionCount >= 3) {
-    document.getElementById("chessStatus")
-      .textContent =
-      "Draw by threefold repetition!";
-
-    recordChessResult("draw");
-
-    chessGameActive = false;
-    stopChessClock();
-    renderChessBoard();
-    return;
-  }
-  if (chessHalfMoveClock >= 100) {
-    document.getElementById("chessStatus")
-      .textContent =
-      "Draw by 50-move rule!";
-
-    recordChessResult("draw");
-    chessGameActive = false;
-    stopChessClock();
-    renderChessBoard();
-    return;
-  }
-  if (
-    chessGameMode === "ai" &&
-    chessCurrentPlayer === chessAIPlayer &&
-    chessGameActive
-  ) {
-    document.getElementById("chessStatus")
-      .textContent = "AI Thinking...";
-
-    scheduleChessAI();
-  }
-
-
-  if (checkChessGameOver(chessCurrentPlayer)) {
+    if (legalMove.castle) moveCastlingRook(targetRow, legalMove.castle);
+    if (piece.type === "king" || piece.type === "rook") piece.hasMoved = true;
+    if (capturedPiece) {
+      (capturedPiece.color === "white" ? capturedWhite : capturedBlack).push(capturedPiece);
+      renderCapturedPieces();
+    }
+    chessHalfMoveClock = piece.type === "pawn" || capturedPiece ? 0 : chessHalfMoveClock + 1;
     selectedChessPiece = null;
     highlightedChessMoves = [];
-    renderChessBoard();
+    const promotion = piece.type === "pawn" && (targetRow === 0 || targetRow === 7);
+    if (promotion) {
+      pendingPromotion = { row: targetRow, col: targetCol, color: piece.color };
+      if (chessGameMode === "ai" && piece.color === chessAIPlayer) {
+        completePromotion(promotionType || "queen");
+      } else {
+        showPromotionMenu(piece.color);
+      }
+    } else {
+      finishChessMove();
+    }
+  } finally {
+    if (session === chessMoveSession) {
+      chessAnimationRunning = false;
+      renderChessBoard();
+    }
+  }
+}
+
+// Promotion and ordinary moves record notation, switch clocks, and schedule AI once.
+function finishChessMove(promotionType = null) {
+  recordStockfishMove(promotionType ? chessPieceLetters[promotionType].toLowerCase() : "");
+  playQuietBlockSound();
+  chessCurrentPlayer = chessCurrentPlayer === "white" ? "black" : "white";
+  const inCheck = isKingInCheck(chessCurrentPlayer);
+  const mate = inCheck && getAllLegalChessMoves(chessCurrentPlayer).length === 0;
+  const notation = lastChessMove.notation +
+    (promotionType ? "=" + chessPieceLetters[promotionType] : "") +
+    (mate ? "#" : inCheck ? "+" : "");
+  chessMoveHistory.push(notation);
+  renderChessMoveHistory();
+  finishChessClockTurn();
+  const repetitionCount = recordChessPosition();
+  if (checkChessGameOver(chessCurrentPlayer)) return;
+  if (repetitionCount >= 3 || chessHalfMoveClock >= 100) {
+    document.getElementById("chessStatus").textContent = repetitionCount >= 3
+      ? "Draw by threefold repetition!" : "Draw by 50-move rule!";
+    recordChessResult("draw");
+    chessGameActive = false;
+    stopChessClock();
     return;
   }
-
-  const inCheck =
-    isKingInCheck(chessCurrentPlayer);
-
-  document.getElementById("chessStatus")
-    .textContent =
-    chessCurrentPlayer === "white"
-      ? inCheck
-        ? "White is in Check!"
-        : `${getChessPlayerName(chessCurrentPlayer)}'s Turn`
-      : inCheck
-        ? "Black is in Check!"
-        : `${getChessPlayerName(chessCurrentPlayer)}'s Turn`;
-
-  renderChessBoard();
+  const aiTurn = chessGameMode === "ai" && chessCurrentPlayer === chessAIPlayer;
+  document.getElementById("chessStatus").textContent = aiTurn
+    ? "AI Thinking..."
+    : inCheck ? `${capitalize(chessCurrentPlayer)} is in Check!`
+    : `${getChessPlayerName(chessCurrentPlayer)}'s Turn`;
+  if (aiTurn) scheduleChessAI();
 }
 
 function renderCapturedPieces() {
@@ -980,51 +965,19 @@ function renderChessMoveHistory() {
 
   panel.innerHTML = "";
 
-  chessMoveHistory.forEach((move, index) => {
-    const item =
-      document.createElement("div");
-
-    item.textContent =
-      `${index + 1}. ${move}`;
-
-    panel.appendChild(item);
-  });
+  for (let index = 0; index < chessMoveHistory.length; index += 2) {
+    const row = document.createElement("div");
+    row.className = "chess-move-row";
+    [`${index / 2 + 1}.`, chessMoveHistory[index], chessMoveHistory[index + 1] || ""].forEach((text, column) => {
+      const cell = document.createElement("span");
+      cell.className = column === 0 ? "chess-move-number" : "chess-move-notation";
+      cell.textContent = text;
+      row.appendChild(cell);
+    });
+    panel.appendChild(row);
+  }
 
 panel.scrollTop = panel.scrollHeight;
-}
-
-function promotePawnIfNeeded(row, col) {
-  const piece = chessBoard[row][col];
-
-  if (!piece || piece.type !== "pawn") {
-    return false;
-  }
-
-  const reachedEnd =
-    (piece.color === "white" && row === 0) ||
-    (piece.color === "black" && row === 7);
-
-  if (!reachedEnd) {
-    return false;
-  }
-
-  pendingPromotion = {
-    row,
-    col,
-    color: piece.color
-  };
-
-  if (
-  stockfishPromotionType &&
-  chessGameMode === "ai" &&
-  piece.color === chessAIPlayer
-) {
-  completePromotion(stockfishPromotionType);
-} else {
-  showPromotionMenu(piece.color);
-}
-
-  return true;
 }
 
 function getAllLegalChessMoves(color) {
@@ -1065,6 +1018,7 @@ function getAllLegalChessMoves(color) {
 function chessAIMove() {
   if (
     !chessGameActive ||
+    chessAnimationRunning ||
     !chessClockStarted ||
     chessGameMode !== "ai" ||
     chessCurrentPlayer !== chessAIPlayer ||
@@ -1753,52 +1707,14 @@ function showPromotionMenu(color) {
 }
 
 function completePromotion(type) {
-  if (
-  !pendingPromotion ||
-  !chessGameActive ||
-  !syncChessClock()
-) {
-  return;
-}
-
-  const piece =
-    chessBoard[pendingPromotion.row][pendingPromotion.col];
-
+  if (!pendingPromotion || !chessGameActive ||
+      !["queen", "rook", "bishop", "knight"].includes(type) || !syncChessClock()) return;
+  const piece = chessBoard[pendingPromotion.row][pendingPromotion.col];
   piece.type = type;
-  recordStockfishMove({
-  queen: "q",
-  rook: "r",
-  bishop: "b",
-  knight: "n"
-}[type]);
-
   pendingPromotion = null;
-
-  document.getElementById("promotionOverlay")
-    .classList.add("hidden");
-
-  chessCurrentPlayer =
-    chessCurrentPlayer === "white"
-      ? "black"
-      : "white";
-finishChessClockTurn();
-  if (checkChessGameOver(chessCurrentPlayer)) {
-    renderChessBoard();
-    return;
-  }
-
+  document.getElementById("promotionOverlay").classList.add("hidden");
+  finishChessMove(type);
   renderChessBoard();
-
-  if (
-    chessGameMode === "ai" &&
-    chessCurrentPlayer === chessAIPlayer &&
-    chessGameActive
-  ) {
-    document.getElementById("chessStatus")
-      .textContent = "AI Thinking...";
-
-    scheduleChessAI();
-  }
 }
 
 function offerChessDraw() {

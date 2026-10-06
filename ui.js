@@ -6,42 +6,68 @@ const blockSound = new Audio("img/block.mp3");
 const tapSound = new Audio("img/tap.mp3");
 const wrongSound = new Audio("img/wrong.mp3");
 
-function playWrongSound() {
-  if (!soundEnabled) {
+let gameAudioContext = null;
+const gameAudioBuffers = new Map();
+const gameAudioLoads = new Map();
+
+function getGameAudioContext() {
+  if (gameAudioContext) return gameAudioContext;
+  const Context = window.AudioContext || window.webkitAudioContext;
+  if (!Context) return null;
+  try { gameAudioContext = new Context(); } catch { return null; }
+  return gameAudioContext;
+}
+
+function preloadGameAudio(source) {
+  source.preload = "auto";
+  source.load();
+  const context = getGameAudioContext();
+  if (!context || gameAudioLoads.has(source.src)) return;
+  const loading = fetch(source.src)
+    .then(response => {
+      if (!response.ok) throw new Error("Sound unavailable");
+      return response.arrayBuffer();
+    })
+    .then(data => context.decodeAudioData(data))
+    .then(buffer => { gameAudioBuffers.set(source.src, buffer); })
+    .catch(() => {});
+  gameAudioLoads.set(source.src, loading);
+}
+
+function unlockGameAudio() {
+  if (!soundEnabled) return;
+  const context = getGameAudioContext();
+  if (context?.state === "suspended") context.resume().catch(() => {});
+}
+
+document.addEventListener("pointerdown", unlockGameAudio, { capture: true });
+document.addEventListener("keydown", unlockGameAudio, { capture: true });
+
+function startGameSound(source, volume = source.volume) {
+  if (!soundEnabled) return;
+  const context = getGameAudioContext();
+  const buffer = gameAudioBuffers.get(source.src);
+  if (context?.state === "running" && buffer) {
+    const voice = context.createBufferSource();
+    const gain = context.createGain();
+    voice.buffer = buffer;
+    gain.gain.value = volume;
+    voice.connect(gain);
+    gain.connect(context.destination);
+    voice.onended = () => { voice.disconnect(); gain.disconnect(); };
+    voice.start();
     return;
   }
-  const sound = wrongSound.cloneNode();
-  sound.volume = 0.20;
-  sound.currentTime = 0;
-  sound.play();
+  // Older browsers and sounds still loading use the existing HTML audio path.
+  const sound = source.cloneNode();
+  sound.volume = volume;
+  sound.play().catch(() => {});
 }
 
-function playSound(sound) {
- if (!soundEnabled) {
- return;
- }
- sound.currentTime = 0;
- sound.play();
-}
-function playCaptureSound() {
- if (!soundEnabled) {
- return;
- }
-
- const sound = blockSound.cloneNode();
- sound.volume = 0.50;
- sound.play();
-}
-
-function playQuietBlockSound() {
-  if (!soundEnabled) {
-    return;
-  }
-
-  const sound = blockSound.cloneNode();
-  sound.volume = 0.10;
-  sound.play();
-}
+function playWrongSound() { startGameSound(wrongSound, 0.20); }
+function playSound(sound) { startGameSound(sound); }
+function playCaptureSound() { startGameSound(blockSound, 0.50); }
+function playQuietBlockSound() { startGameSound(blockSound, 0.10); }
 
 //PROFILE MANAGEMENT
 function showProfileView(viewId) {
@@ -982,6 +1008,7 @@ function launchPendingGame() {
 }
 
 function setGameAreaContent(html) {
+  cancelChessAnimation();
   const gameArea =
     document.getElementById("gameArea");
 
@@ -1036,6 +1063,7 @@ function toggleSound() {
  );
 
  updateSoundButton();
+ if (soundEnabled) unlockGameAudio();
 }
 
 function updateSoundButton() {
@@ -1049,21 +1077,21 @@ function updateSoundButton() {
  soundToggle.textContent =
  soundEnabled ? "Sound: On" : "Sound: Off";
 }
+const availableThemes = ["dark", "neon", "retro", "wood", "forest"];
+
 function setTheme(theme) {
- document.body.className = "";
- document.body.classList.add(theme + "-theme");
-
- localStorage.setItem("theme", theme);
+  if (!availableThemes.includes(theme)) theme = "dark";
+  document.body.classList.remove(...availableThemes.map(name => name + "-theme"));
+  document.body.classList.add(theme + "-theme");
+  localStorage.setItem("theme", theme);
+  document.querySelectorAll("#themeMenu button").forEach(button => {
+    button.setAttribute("aria-pressed", String(button.dataset.theme === theme));
+  });
+  document.getElementById("themeMenu")?.classList.remove("open");
 }
 
-const savedTheme = localStorage.getItem("theme");
-
-if (savedTheme) {
- setTheme(savedTheme);
-} else {
- setTheme("dark");
+setTheme(localStorage.getItem("theme") || "dark");
 updateSoundButton();
-}
 
 function toggleThemeMenu() {
   document.getElementById("themeMenu")
@@ -1161,17 +1189,13 @@ function playGameResultSound(mode, result) {
       ? dominoLossSound
       : winSound;
 
-  const sound = source.cloneNode();
-  sound.volume = source.volume;
-  sound.play().catch(() => {});
+  startGameSound(source);
 }
 
 function playDominoSound(source) {
   if (!soundEnabled) return;
 
-  const sound = source.cloneNode();
-  sound.volume = source.volume;
-  sound.play().catch(() => {});
+  startGameSound(source);
 }
 
 function getDominoesScores(name = currentProfile) {
@@ -1216,3 +1240,6 @@ function countCompletedGames(scores) {
     return total + results.win + results.loss + results.draw;
   }, 0);
 }
+// Decode during the menu/splash so the first gameplay sound is already ready.
+[clickSound, winSound, dropSound, blockSound, tapSound, wrongSound,
+ dominoTileSound, dominoLossSound].forEach(preloadGameAudio);

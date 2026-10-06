@@ -190,7 +190,7 @@ async function requestStockfishMove() {
   }
 }
 
-function receiveStockfishMove(uci) {
+async function receiveStockfishMove(uci) {
   const request = stockfishRequest;
   stockfishRequest = null;
 
@@ -199,6 +199,7 @@ function receiveStockfishMove(uci) {
   if (
     !request ||
     !chessGameActive ||
+    chessAnimationRunning ||
     chessGameMode !== "ai" ||
     chessDifficulty !== "expert" ||
     chessCurrentPlayer !== chessAIPlayer ||
@@ -260,7 +261,7 @@ function receiveStockfishMove(uci) {
   highlightedChessMoves = [move];
 
   try {
-    moveChessPiece(row, col);
+    await moveChessPiece(row, col);
   } finally {
     stockfishPromotionType = null;
   }

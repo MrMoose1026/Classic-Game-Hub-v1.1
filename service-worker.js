@@ -1,4 +1,4 @@
-const CACHE_NAME = "cgh-v1.4.2";
+const CACHE_NAME = "cgh-v1.5.0";
 
 const FILES_TO_CACHE = [
   "./",
@@ -7,11 +7,21 @@ const FILES_TO_CACHE = [
   "./state.js",
   "./ui.js",
   "./chess.js",
+  "./stockfishAI.js",
+  "./dominoes.js",
   "./checkers.js",
   "./connectfour.js",
   "./tictactoe.js",
   "./script.js",
   "./manifest.json",
+  "./img/click.mp3",
+  "./img/win.mp3",
+  "./img/drop.mp3",
+  "./img/block.mp3",
+  "./img/tap.mp3",
+  "./img/wrong.mp3",
+  "./img/tile-soft.mp3",
+  "./img/loss.mp3",
   "./img/Gwenchana.ttf",
 
   "./img/icons/icon-192.png",

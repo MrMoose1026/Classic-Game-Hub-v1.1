@@ -415,7 +415,8 @@ box-shadow: 0 0 20px #4cd137;
 }
 
 .theme-menu.open {
-  max-height: 220px; /* Adjust as needed */
+  max-height: min(320px, 60vh);
+  overflow-y: auto;
   opacity: 1;
 }
 
@@ -1121,6 +1122,7 @@ color: #4b7bec;
 /* Chess Styles */
 .chess-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: 12px;
   margin-top: 10px;
@@ -1133,15 +1135,16 @@ color: #4b7bec;
 
 .chess-board {
   display: grid;
-  grid-template-columns: repeat(8, 50px);
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  width: min(400px, calc(100vw - 24px));
   justify-content: center;
   margin: 1px auto;
   border: 1px solid #111;
 }
 
 .chess-square {
-  width: 50px;
-  height: 50px;
+  width: 100%;
+  aspect-ratio: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1156,12 +1159,15 @@ color: #4b7bec;
 }
 
 .chess-piece {
+  width: 88%;
+  height: 88%;
   font-size: 32px;
 }
 
 .chess-piece-image {
-  width: 44px;
-  height: 44px;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
   pointer-events: none;
 }
 
@@ -1175,20 +1181,25 @@ color: #4b7bec;
   cursor: pointer;
 }
 
-.chess-slide-piece {
-  animation: chessSlidePiece 0.45s ease;
+.chess-moving-piece {
+  position: fixed;
+  z-index: 3500;
+  pointer-events: none;
+  object-fit: contain;
+  will-change: transform;
 }
 
-@keyframes chessSlidePiece {
-  from {
-    transform:
-      translate(var(--move-x), var(--move-y));
-  }
-  to {
-    transform:
-      translate(0, 0);
-  }
+.chess-move-row {
+  display: grid;
+  grid-template-columns: 2.3em minmax(0, 1fr) minmax(0, 1fr);
+  gap: 6px;
+  padding: 5px 2px;
+  text-align: left;
+  font-size: 13px;
 }
+
+.chess-move-number { opacity: 0.65; }
+.chess-move-notation { font-family: monospace; overflow-wrap: anywhere; }
 
 .white-piece {
   color: #ffffff;
@@ -1462,4 +1473,117 @@ color: #4b7bec;
   .chess-side-panel {
     height: auto;
   }
+}
+/* Natural themes use the same settings and saved theme key as Neon/Retro. */
+.wood-theme {
+  --natural-surface: #624027;
+  --natural-surface-top: #785033;
+  --natural-text: #fff2dc;
+  --natural-muted: #e1c8a6;
+  --natural-accent: #edbc78;
+  --natural-button: #e4ad63;
+  --natural-button-hover: #f0c48a;
+  --natural-button-text: #2e1c10;
+  --natural-border: #a57b50;
+  --natural-light: #ead3aa;
+  --natural-dark: #815538;
+  color: var(--natural-text);
+  background:
+    repeating-linear-gradient(92deg, #ffffff03 0 2px, transparent 2px 9px),
+    linear-gradient(180deg, #302015, #4b3020);
+  min-height: 100vh;
+}
+
+.forest-theme {
+  --natural-surface: #203f2b;
+  --natural-surface-top: #31583b;
+  --natural-text: #f2f8ed;
+  --natural-muted: #c5d9bd;
+  --natural-accent: #b3d99a;
+  --natural-button: #a7cb8a;
+  --natural-button-hover: #c1dfa9;
+  --natural-button-text: #13271a;
+  --natural-border: #709669;
+  --natural-light: #d5e3bd;
+  --natural-dark: #5a7d50;
+  color: var(--natural-text);
+  background:
+    radial-gradient(ellipse at 15% 15%, #78aa6429, transparent 35%),
+    radial-gradient(ellipse at 80% 70%, #41784629, transparent 40%),
+    linear-gradient(180deg, #142219, #1e3423);
+  min-height: 100vh;
+}
+
+:is(.wood-theme, .forest-theme) :is(.game-card, .settings-panel, .stat-card,
+  .profile-drawer, .promotion-box, .theme-menu, .confirmation-box,
+  .smoke-signal-box, .chess-side-panel) {
+  color: var(--natural-text);
+  background: linear-gradient(145deg, var(--natural-surface-top), var(--natural-surface));
+  border: 1px solid var(--natural-border);
+  box-shadow: 0 6px 18px #0005;
+}
+
+.wood-theme .game-card {
+  background:
+    repeating-linear-gradient(2deg, #ffffff05 0 1px, #00000006 2px 5px),
+    linear-gradient(135deg, var(--natural-surface-top), var(--natural-surface));
+}
+
+:is(.wood-theme, .forest-theme) :is(.game-card h2, .stats-panel h3) {
+  color: var(--natural-accent);
+}
+
+:is(.wood-theme, .forest-theme) button {
+  background: var(--natural-button);
+  color: var(--natural-button-text);
+}
+
+:is(.wood-theme, .forest-theme) button:hover {
+  background: var(--natural-button-hover);
+}
+
+:is(.wood-theme, .forest-theme) select {
+  background: var(--natural-surface);
+  color: var(--natural-text);
+  border: 1px solid var(--natural-border);
+}
+
+:is(.wood-theme, .forest-theme) .menu-divider {
+  background: var(--natural-accent);
+  box-shadow: 0 0 10px var(--natural-border);
+}
+
+:is(.wood-theme, .forest-theme) .splash-screen {
+  background: var(--natural-surface);
+  color: var(--natural-text);
+}
+
+:is(.wood-theme, .forest-theme) :is(.splash-c, .splash-g, .splash-h) {
+  color: var(--natural-accent);
+}
+
+:is(.wood-theme, .forest-theme) :is(.chess-light, .light-square) {
+  background: var(--natural-light);
+}
+
+:is(.wood-theme, .forest-theme) :is(.chess-dark, .dark-square) {
+  background: var(--natural-dark);
+}
+
+:is(.wood-theme, .forest-theme) :is(.chess-selected, .selected-piece) {
+  outline-color: var(--natural-accent);
+}
+
+:is(.wood-theme, .forest-theme) :is(.chess-highlight, .highlighted-move) {
+  box-shadow: inset 0 0 15px var(--natural-accent);
+}
+
+.theme-menu button[aria-pressed="true"] { outline: 2px solid currentColor; outline-offset: -3px; }
+
+@media (max-width: 800px) {
+  .chess-center { grid-row: 1; min-width: 0; }
+  .chess-layout { width: 100%; gap: 12px; }
+  .chess-side-panel { width: min(400px, calc(100vw - 24px)); box-sizing: border-box; margin: 0 auto; min-width: 0; }
+  #moveHistoryList { height: auto; max-height: 180px; }
+  .chess-move-row { font-size: 15px; }
 }
