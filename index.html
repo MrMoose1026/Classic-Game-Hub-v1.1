@@ -188,7 +188,8 @@ Reset All Scores
     <button data-theme="neon" onclick="setTheme('neon')">Neon</button>
     <button data-theme="retro" onclick="setTheme('retro')">Retro</button>
     <button data-theme="wood" onclick="setTheme('wood')">Wood</button>
-    <button data-theme="forest" onclick="setTheme('forest')">Forest Garden</button>
+    <button data-theme="forest" onclick="setTheme('forest')">Forest</button>
+    <button data-theme="lawn" onclick="setTheme('lawn')">Lawn</button>
   </div>
 </div>
 <h3>Sound</h3>
@@ -224,8 +225,7 @@ Sound: On
   <div class="game-card" onclick="startGame('checkers')"><h2>Checkers</h2> Capture, King, and Conquer</div>
   <div class="game-card" onclick="startGame('chess')"><h2>Chess</h2> Checkmate to win</div>
   <div class="game-card" onclick="startGame('dominoes')"><h2>Dominoes</h2> Match tiles and clear your hand</div>
-  <div class="game-card" onclick="showSmokeSignal('Not yet..')"><h2>Backgammon</h2>Coming soon
-</div>
+  <div class="game-card" onclick="startGame('backgammon')"><h2>Backgammon</h2> Roll, race, and bear off</div>
 </div>
 
 </div>
@@ -250,6 +250,7 @@ Back to Menu
 <script src="chess.js"></script>
 <script src="script.js"></script>
 <script src="dominoes.js"></script>
+<script src="backgammon.js"></script>
 <script>
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.getRegistration().then(async (registration) => {
@@ -262,3 +263,4 @@ Back to Menu
 </script>
 </body>
 </html>
+

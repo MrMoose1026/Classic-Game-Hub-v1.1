@@ -67,7 +67,9 @@ let selectedChessPiece = null;
 let highlightedChessMoves = [];
 let lastChessMove = null;
 let lastChessMoveHighlight = null;
+let lastChessAnimationMove = null;
 let capturedBlack = [];
+let capturedPieceElement
 let capturedWhite = [];
 let chessGameMode = "ai";
 let chessAIPlayer = "black";

@@ -1853,3 +1853,4 @@ function checkChessGameOver(color) {
 function restartChess() {
   showChessTimeScreen();
 }
+

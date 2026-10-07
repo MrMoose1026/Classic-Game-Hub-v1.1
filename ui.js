@@ -6,68 +6,42 @@ const blockSound = new Audio("img/block.mp3");
 const tapSound = new Audio("img/tap.mp3");
 const wrongSound = new Audio("img/wrong.mp3");
 
-let gameAudioContext = null;
-const gameAudioBuffers = new Map();
-const gameAudioLoads = new Map();
-
-function getGameAudioContext() {
-  if (gameAudioContext) return gameAudioContext;
-  const Context = window.AudioContext || window.webkitAudioContext;
-  if (!Context) return null;
-  try { gameAudioContext = new Context(); } catch { return null; }
-  return gameAudioContext;
-}
-
-function preloadGameAudio(source) {
-  source.preload = "auto";
-  source.load();
-  const context = getGameAudioContext();
-  if (!context || gameAudioLoads.has(source.src)) return;
-  const loading = fetch(source.src)
-    .then(response => {
-      if (!response.ok) throw new Error("Sound unavailable");
-      return response.arrayBuffer();
-    })
-    .then(data => context.decodeAudioData(data))
-    .then(buffer => { gameAudioBuffers.set(source.src, buffer); })
-    .catch(() => {});
-  gameAudioLoads.set(source.src, loading);
-}
-
-function unlockGameAudio() {
-  if (!soundEnabled) return;
-  const context = getGameAudioContext();
-  if (context?.state === "suspended") context.resume().catch(() => {});
-}
-
-document.addEventListener("pointerdown", unlockGameAudio, { capture: true });
-document.addEventListener("keydown", unlockGameAudio, { capture: true });
-
-function startGameSound(source, volume = source.volume) {
-  if (!soundEnabled) return;
-  const context = getGameAudioContext();
-  const buffer = gameAudioBuffers.get(source.src);
-  if (context?.state === "running" && buffer) {
-    const voice = context.createBufferSource();
-    const gain = context.createGain();
-    voice.buffer = buffer;
-    gain.gain.value = volume;
-    voice.connect(gain);
-    gain.connect(context.destination);
-    voice.onended = () => { voice.disconnect(); gain.disconnect(); };
-    voice.start();
+function playWrongSound() {
+  if (!soundEnabled) {
     return;
   }
-  // Older browsers and sounds still loading use the existing HTML audio path.
-  const sound = source.cloneNode();
-  sound.volume = volume;
-  sound.play().catch(() => {});
+  const sound = wrongSound.cloneNode();
+  sound.volume = 0.20;
+  sound.currentTime = 0;
+  sound.play();
 }
 
-function playWrongSound() { startGameSound(wrongSound, 0.20); }
-function playSound(sound) { startGameSound(sound); }
-function playCaptureSound() { startGameSound(blockSound, 0.50); }
-function playQuietBlockSound() { startGameSound(blockSound, 0.10); }
+function playSound(sound) {
+ if (!soundEnabled) {
+ return;
+ }
+ sound.currentTime = 0;
+ sound.play();
+}
+function playCaptureSound() {
+ if (!soundEnabled) {
+ return;
+ }
+
+ const sound = blockSound.cloneNode();
+ sound.volume = 0.50;
+ sound.play();
+}
+
+function playQuietBlockSound() {
+  if (!soundEnabled) {
+    return;
+  }
+
+  const sound = blockSound.cloneNode();
+  sound.volume = 0.10;
+  sound.play();
+}
 
 //PROFILE MANAGEMENT
 function showProfileView(viewId) {
@@ -738,6 +712,10 @@ profiles[currentProfile].dominoesScores = {
   ai: { win: 0, loss: 0, draw: 0 },
   local: { win: 0, loss: 0, draw: 0 }
 };
+profiles[currentProfile].backgammonScores = {
+  ai: { win: 0, loss: 0, draw: 0 },
+  local: { win: 0, loss: 0, draw: 0 }
+};
 
 updateProfileSummary();
 
@@ -836,23 +814,26 @@ function selectGameMode(mode) {
   if (pendingGame === "dominoes") {
     dominoes.mode = mode;
   }
+  if (pendingGame === "backgammon") {
+  backgammon.mode = mode;
+}
 
   if (
-    mode === "ai" &&
-    (
-      pendingGame === "dominoes" ||
-      pendingGame === "connect4" ||
-      pendingGame === "checkers" ||
-      pendingGame === "chess"
-    )
-  ) {
-    showDifficultyScreen();
-
-    } else if (pendingGame === "chess") {
-    showChessTimeScreen();
-  } else {
-    launchPendingGame();
-  }
+  mode === "ai" &&
+  (
+    pendingGame === "backgammon" ||
+    pendingGame === "dominoes" ||
+    pendingGame === "connect4" ||
+    pendingGame === "checkers" ||
+    pendingGame === "chess"
+  )
+) {
+  showDifficultyScreen();
+} else if (pendingGame === "chess") {
+  showChessTimeScreen();
+} else {
+  launchPendingGame();
+}
 }
 
 function showDifficultyScreen() {
@@ -917,6 +898,9 @@ function selectDifficulty(difficulty) {
   if (pendingGame === "dominoes") {
     dominoes.difficulty = difficulty;
   }
+  if (pendingGame === "backgammon") {
+  backgammon.difficulty = difficulty;
+}
 
   if (pendingGame === "chess") {
     showChessTimeScreen();
@@ -1004,6 +988,8 @@ function launchPendingGame() {
     loadChess();
   } else if (pendingGame === "dominoes") {
     loadDominoes();
+  } else if (pendingGame === "backgammon") {
+    loadBackgammon();
   }
 }
 
@@ -1023,18 +1009,116 @@ function setGameAreaContent(html) {
   });
 }
 
-function showMenu() {
-dominoes.stop();
-cancelStockfishSearch();
-stopChessClock();
-chessClockStarted = false;
-chessGameActive = false;
-showAppTitle();
- document.querySelector(".menu").classList.remove("hidden");
- document.getElementById("backButton").style.display = "none";
+function hasActiveMenuGame(game = pendingGame) {
+  const area = document.getElementById("gameArea");
+  if (!area) return false;
 
- setGameAreaContent(`
-  `);
+  switch (game) {
+    case "tic":
+      return !!area.querySelector(".board") && gameActive;
+    case "connect4":
+      return !!area.querySelector("#connectBoard") && connectGameActive;
+    case "checkers":
+      return !!area.querySelector("#checkersBoard") && checkersGameActive;
+    case "chess":
+      return !!area.querySelector("#chessBoard") && chessGameActive;
+    case "dominoes":
+      return !!area.querySelector(".domino-game") && dominoes.active;
+    case "backgammon":
+      return !!area.querySelector(".bg-game") && backgammon.active;
+    default:
+      return false;
+  }
+}
+
+function showMenu() {
+  const game = pendingGame;
+
+  if (!hasActiveMenuGame(game)) {
+    returnToMainMenu();
+    return;
+  }
+
+  showConfirmation(
+    "Returning to menu mid game will be a loss. Are you sure?",
+    () => {
+      if (pendingGame !== game) return;
+
+      // Avoid a second result if the match ended during the dialog.
+      if (hasActiveMenuGame(game)) {
+        switch (game) {
+          case "tic":
+            gameActive = false;
+            recordTicResult("loss");
+            break;
+
+          case "connect4":
+            connectGameActive = false;
+            recordConnectResult("loss");
+            break;
+
+          case "checkers":
+            checkersGameActive = false;
+            recordCheckersResult("loss");
+            break;
+
+          case "chess":
+            chessGameActive = false;
+            cancelChessAnimation();
+            cancelStockfishSearch();
+            stopChessClock();
+            pendingPromotion = null;
+            document.getElementById("promotionOverlay")
+              .classList.add("hidden");
+            recordChessResult("loss");
+            break;
+
+          case "dominoes":
+            dominoes.stop();
+            recordDominoesResult(
+              1,
+              dominoes.mode,
+              dominoes.scoreProfile
+            );
+            playGameResultSound(dominoes.mode, "loss");
+            break;
+
+          case "backgammon":
+            backgammon.finish(1, true);
+             break;
+        }
+      }
+
+      returnToMainMenu();
+    }
+  );
+}
+
+function returnToMainMenu() {
+  gameActive = false;
+  connectGameActive = false;
+  checkersGameActive = false;
+  dominoes.stop();
+  backgammon.stop();
+  cancelStockfishSearch();
+  stopChessClock();
+  chessClockStarted = false;
+  chessGameActive = false;
+  pendingPromotion = null;
+
+  document.getElementById("promotionOverlay")
+    .classList.add("hidden");
+
+  pendingGame = null;
+  showAppTitle();
+
+  document.querySelector(".menu")
+    .classList.remove("hidden");
+
+  document.getElementById("backButton")
+    .style.display = "none";
+
+  setGameAreaContent("");
 }
 
 //SYSTEM SETTINGS
@@ -1063,7 +1147,6 @@ function toggleSound() {
  );
 
  updateSoundButton();
- if (soundEnabled) unlockGameAudio();
 }
 
 function updateSoundButton() {
@@ -1077,7 +1160,7 @@ function updateSoundButton() {
  soundToggle.textContent =
  soundEnabled ? "Sound: On" : "Sound: Off";
 }
-const availableThemes = ["dark", "neon", "retro", "wood", "forest"];
+const availableThemes = ["dark", "neon", "retro", "wood", "forest", "lawn"];
 
 function setTheme(theme) {
   if (!availableThemes.includes(theme)) theme = "dark";
@@ -1189,13 +1272,17 @@ function playGameResultSound(mode, result) {
       ? dominoLossSound
       : winSound;
 
-  startGameSound(source);
+  const sound = source.cloneNode();
+  sound.volume = source.volume;
+  sound.play().catch(() => {});
 }
 
 function playDominoSound(source) {
   if (!soundEnabled) return;
 
-  startGameSound(source);
+  const sound = source.cloneNode();
+  sound.volume = source.volume;
+  sound.play().catch(() => {});
 }
 
 function getDominoesScores(name = currentProfile) {
@@ -1230,7 +1317,8 @@ function getStatGames() {
     ["Connect Four", connectScores],
     ["Checkers", checkersScores],
     ["Chess", chessScores],
-    ["Dominoes", getDominoesScores()]
+    ["Dominoes", getDominoesScores()],
+    ["Backgammon", getBackgammonScores()]
   ];
 }
 
@@ -1240,6 +1328,25 @@ function countCompletedGames(scores) {
     return total + results.win + results.loss + results.draw;
   }, 0);
 }
-// Decode during the menu/splash so the first gameplay sound is already ready.
-[clickSound, winSound, dropSound, blockSound, tapSound, wrongSound,
- dominoTileSound, dominoLossSound].forEach(preloadGameAudio);
+
+// BACKGAMMON STATS
+function getBackgammonScores(name = currentProfile) {
+  ensureProfileExists(name);
+
+  if (!profiles[name].backgammonScores) {
+    profiles[name].backgammonScores = {
+      ai: { win: 0, loss: 0, draw: 0 },
+      local: { win: 0, loss: 0, draw: 0 }
+    };
+  }
+
+  return profiles[name].backgammonScores;
+}
+
+function recordBackgammonResult(winner, mode, name) {
+  const scores = getBackgammonScores(name);
+  scores[mode][winner === 0 ? "win" : "loss"]++;
+
+  saveProfiles();
+  updateProfileSummary();
+}
