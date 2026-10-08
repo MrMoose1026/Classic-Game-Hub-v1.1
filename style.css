@@ -993,6 +993,34 @@ body.forest-theme {
   box-shadow: inset 0 0 15px #fff4a3;
 }
 
+/* Mobile page background and status-bar colors */
+html {
+  background-color: #1e1e2f;
+}
+
+html:has(body.neon-theme) {
+  background-color: #050510;
+}
+
+html:has(body.retro-theme) {
+  background-color: #f4d35e;
+}
+
+html:has(body.wood-theme),
+body.wood-theme {
+  background-color: #302015;
+}
+
+html:has(body.forest-theme),
+body.forest-theme {
+  background-color: #060e09;
+}
+
+html:has(body.lawn-theme),
+body.lawn-theme {
+  background-color: #6aab45;
+}
+
 /* Settings Button Styles */
 
 .stat-matchups {

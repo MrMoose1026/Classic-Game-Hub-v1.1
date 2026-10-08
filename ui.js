@@ -6,31 +6,104 @@ const blockSound = new Audio("img/block.mp3");
 const tapSound = new Audio("img/tap.mp3");
 const wrongSound = new Audio("img/wrong.mp3");
 
+// Preload reusable sound players.
+const gameSoundPools = new Map();
+let gameSoundsWarmed = false;
+
+function preloadGameSound(source) {
+  if (gameSoundPools.has(source)) {
+    return gameSoundPools.get(source);
+  }
+
+  const pool = [
+    source,
+    source.cloneNode(),
+    source.cloneNode()
+  ].map(sound => {
+    sound.preload = "auto";
+    sound.load();
+    return { sound, warming: false };
+  });
+
+  gameSoundPools.set(source, pool);
+  return pool;
+}
+
+function getReadySound(source) {
+  const pool = preloadGameSound(source);
+  const voice = pool.find(v =>
+    !v.warming && (v.sound.paused || v.sound.ended)
+  ) || pool[0];
+
+  voice.warming = false;
+  voice.sound.muted = false;
+  voice.sound.volume = source.volume;
+  voice.sound.currentTime = 0;
+  return voice.sound;
+}
+
+function warmGameSounds() {
+  if (gameSoundsWarmed) return;
+  gameSoundsWarmed = true;
+
+  for (const pool of gameSoundPools.values()) {
+    for (const voice of pool) {
+      if (!voice.sound.paused) continue;
+
+      voice.warming = true;
+      voice.sound.muted = true;
+
+      const finish = () => {
+        if (!voice.warming) return;
+        voice.sound.pause();
+        voice.sound.currentTime = 0;
+        voice.sound.muted = false;
+        voice.warming = false;
+      };
+
+      voice.sound.play().then(finish, finish);
+    }
+  }
+}
+
+[
+  clickSound, winSound, dropSound,
+  blockSound, tapSound, wrongSound
+].forEach(preloadGameSound);
+
+document.addEventListener("pointerdown", warmGameSounds, {
+  once: true,
+  capture: true
+});
+
+document.addEventListener("keydown", warmGameSounds, {
+  once: true,
+  capture: true
+});
+
 function playWrongSound() {
   if (!soundEnabled) {
     return;
   }
-  const sound = wrongSound.cloneNode();
+  const sound = getReadySound(wrongSound);
   sound.volume = 0.20;
   sound.currentTime = 0;
-  sound.play();
+  sound.play().catch(() => {});
 }
 
-function playSound(sound) {
- if (!soundEnabled) {
- return;
- }
- sound.currentTime = 0;
- sound.play();
+function playSound(source) {
+  if (!soundEnabled) return;
+  getReadySound(source).play().catch(() => {});
 }
+
 function playCaptureSound() {
  if (!soundEnabled) {
  return;
  }
 
- const sound = blockSound.cloneNode();
+ const sound = getReadySound(blockSound);
  sound.volume = 0.50;
- sound.play();
+ sound.play().catch(() => {});
 }
 
 function playQuietBlockSound() {
@@ -38,9 +111,9 @@ function playQuietBlockSound() {
     return;
   }
 
-  const sound = blockSound.cloneNode();
+  const sound = getReadySound(blockSound);
   sound.volume = 0.10;
-  sound.play();
+  sound.play().catch(() => {});
 }
 
 //PROFILE MANAGEMENT
@@ -1263,6 +1336,7 @@ dominoTileSound.volume = 0.35;
 
 const dominoLossSound = new Audio("img/loss.mp3");
 dominoLossSound.volume = 0.5;
+[dominoTileSound, dominoLossSound].forEach(preloadGameSound);
 
 function playGameResultSound(mode, result) {
   if (!soundEnabled || result === "draw") return;
@@ -1272,7 +1346,7 @@ function playGameResultSound(mode, result) {
       ? dominoLossSound
       : winSound;
 
-  const sound = source.cloneNode();
+  const sound = getReadySound(source);
   sound.volume = source.volume;
   sound.play().catch(() => {});
 }
@@ -1280,7 +1354,7 @@ function playGameResultSound(mode, result) {
 function playDominoSound(source) {
   if (!soundEnabled) return;
 
-  const sound = source.cloneNode();
+  const sound = getReadySound(source);
   sound.volume = source.volume;
   sound.play().catch(() => {});
 }
