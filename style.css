@@ -2192,3 +2192,14 @@ color: #4b7bec;
   background: #92a477;
   border-radius: 8px;
 }
+/* Keep exports and profile setup usable on narrow screens. */
+.chess-export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 16px auto;
+}
+#profileSetupNotice {
+  line-height: 1.5;
+}

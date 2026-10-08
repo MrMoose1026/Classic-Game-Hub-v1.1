@@ -8,6 +8,7 @@ const vm = require('node:vm');
 
 function fixture({ cellSize = 50, audio = false } = {}) {
   const audioVoices = [];
+  const playedSounds = [];
   const audioGains = [];
   class AudioContext {
     constructor() { this.state = 'suspended'; this.destination = {}; }
@@ -60,6 +61,7 @@ function fixture({ cellSize = 50, audio = false } = {}) {
     }
     cloneNode() { const clone = new Element(this.tagName); clone.attributes = { ...this.attributes }; clone.className = [...this.classes].join(' '); return clone; }
     remove() { const list = this.parentElement?.children; if (list) list.splice(list.indexOf(this), 1); }
+    click() { this.clicked = true; }
     animate(keyframes, options) {
       let resolve;
       const finished = new Promise(done => { resolve = done; });
@@ -76,18 +78,21 @@ function fixture({ cellSize = 50, audio = false } = {}) {
   for (const name of ['dark', 'neon', 'retro', 'wood', 'forest']) {
     const button = new Element('button'); button.dataset.theme = name; elements.get('themeMenu').appendChild(button);
   }
+  for (const id of ['chessTopPlayer', 'chessBottomPlayer', 'profileOverlay', 'profileDrawer', 'profileSetupNotice', 'editProfileInput', 'editProfilePin', 'editProfileView', 'profileMainView', 'newProfileView', 'newProfileInput', 'newProfilePin', 'switchProfileView', 'switchPinSection', 'smokeSignalMessage', 'smokeSignalOverlay']) {
+    const element = new Element(); elements.set(id, element); body.appendChild(element);
+  }
   const document = {
     body,
     getElementById: id => elements.get(id) || null,
     createElement: tag => new Element(tag),
-    querySelectorAll: selector => selector === '#themeMenu button' ? elements.get('themeMenu').children : [],
+    querySelectorAll: selector => selector === '#themeMenu button' ? elements.get('themeMenu').children : selector === '.profile-view' ? ['editProfileView', 'profileMainView', 'newProfileView', 'switchProfileView'].map(id => elements.get(id)) : [],
     querySelector: () => new Element(),
     addEventListener() {}
   };
   class Audio {
     constructor(src) { this.src = src; this.volume = 1; }
     load() {}
-    play() { return Promise.resolve(); }
+    play() { playedSounds.push({ src: this.src, volume: this.volume }); return Promise.resolve(); }
     cloneNode() { return new Audio(this.src); }
   }
   let now = 100;
@@ -98,6 +103,8 @@ function fixture({ cellSize = 50, audio = false } = {}) {
     fetch: async () => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(1) }),
     localStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, String(value)), removeItem: key => storage.delete(key) },
     performance: { now: () => now },
+    navigator: { clipboard: { writeText: async text => { storage.set('clipboard', text); } } },
+    Blob, URL,
     setTimeout: () => 1, clearTimeout() {}, setInterval: () => 1, clearInterval() {},
     requestAnimationFrame: callback => callback(), console
   });
@@ -105,7 +112,7 @@ function fixture({ cellSize = 50, audio = false } = {}) {
   for (const file of ['state.js', 'ui.js', 'stockfishAI.js', 'chess.js', 'script.js']) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), context, { filename: file });
   }
-  run('chessGameMode = "local"; chessTimeMinutes = 0; loadChess();');
+  run('profiles[currentProfile].setupComplete = true; chessGameMode = "local"; chessTimeMinutes = 0; loadChess();');
   function start(from, to) {
     const coords = square => [8 - Number(square[1]), square.charCodeAt(0) - 97];
     const [fr, fc] = coords(from); const [tr, tc] = coords(to);
@@ -124,7 +131,7 @@ function fixture({ cellSize = 50, audio = false } = {}) {
     }
     run('renderChessBoard();');
   }
-  return { run, move, start, position, animations, elements, body, storage, audioVoices, audioGains, setNow(value) { now = value; } };
+  return { run, move, start, position, animations, elements, body, storage, audioVoices, audioGains, playedSounds, setNow(value) { now = value; } };
 }
 const kings = [['e1', 'king', 'white'], ['e8', 'king', 'black']];
 const history = f => JSON.parse(f.run('JSON.stringify(chessMoveHistory)'));
@@ -293,14 +300,88 @@ test('animation distance follows actual square size on narrow boards', async () 
   f.animations[0].finish(); await moving;
 });
 
-test('decoded audio is reused, respects mute, and preserves sound volumes', async () => {
+test('preloaded audio is reused, respects mute, and preserves sound volumes', async () => {
   const f = fixture({ audio: true });
-  await f.run('Promise.all([...gameAudioLoads.values()])');
-  assert.equal(f.run('gameAudioBuffers.size'), 8);
-  await f.run('unlockGameAudio();');
+  assert.equal(f.run('gameSoundPools.size'), 8);
+  assert.equal(f.run('getReadySound(blockSound) === getReadySound(blockSound)'), true);
   f.run('playQuietBlockSound(); playCaptureSound(); playDominoSound(dominoTileSound);');
-  assert.deepEqual(f.audioGains.map(gain => gain.gain.value), [0.10, 0.50, 0.35]);
-  assert.equal(f.audioVoices.every(voice => voice.started), true);
+  assert.deepEqual(f.playedSounds.map(sound => sound.volume), [0.10, 0.50, 0.35]);
   f.run('soundEnabled = false; playSound(winSound); playWrongSound();');
-  assert.equal(f.audioVoices.length, 3);
+  assert.equal(f.playedSounds.length, 3);
+});
+
+test('FEN contains placement, turn, rights, en passant and both move counters', async () => {
+  const f = fixture();
+  assert.equal(f.run('getChessFEN()'), 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+  await f.move('e2', 'e4');
+  assert.equal(f.run('getChessFEN()'), 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1');
+  await f.move('e7', 'e5'); await f.move('g1', 'f3');
+  assert.equal(f.run('getChessFEN()').split(' ').slice(1).join(' '), 'b KQkq - 1 2');
+  f.run('chessBoard[7][4].hasMoved = true; chessBoard[0][7] = null;');
+  assert.equal(f.run('getChessFEN()').split(' ')[2], 'q');
+});
+
+test('PGN captures SAN, names and a checkmate result', async () => {
+  const f = fixture();
+  await f.move('f2', 'f3'); await f.move('e7', 'e5');
+  await f.move('g2', 'g4'); await f.move('d8', 'h4');
+  assert.match(f.run('getChessPGN()'), /\[White "Player 1"\]/);
+  assert.match(f.run('getChessPGN()'), /\[Result "0-1"\]/);
+  assert.match(f.run('getChessPGN()'), /1\. f3 e5 2\. g4 Qh4# 0-1/);
+  f.run('initializeChess();');
+  assert.equal(f.run('chessExportResult'), '*');
+  assert.equal(f.run('chessMoveHistory.length'), 0);
+});
+
+test('Black-side player names, results and board orientation match the chosen color', () => {
+  const f = fixture();
+  f.run('chessGameMode = "ai"; chessAIPlayer = "white"; initializeChess(); renderChessBoard();');
+  assert.equal(f.run('chessExportMetadata.White'), 'AI');
+  assert.equal(f.run('chessExportMetadata.Black'), 'Player 1');
+  assert.equal(f.elements.get('chessBoard').children[0].style.order, 63);
+  f.run('recordChessResult("win");');
+  assert.equal(f.run('chessExportResult'), '0-1');
+  f.run('recordChessResult("loss");');
+  assert.equal(f.run('chessExportResult'), '1-0');
+  f.run('recordChessResult("draw");');
+  assert.equal(f.run('chessExportResult'), '1/2-1/2');
+});
+
+test('copy/download exports use complete data, and pending promotions block exports', async () => {
+  const f = fixture();
+  await f.run('exportChess("pgn", "copy")');
+  assert.equal(f.storage.get('clipboard'), f.run('getChessPGN()'));
+  await f.run('exportChess("fen", "download")');
+  assert.equal(f.body.children.some(el => el.tagName === 'a'), false);
+  f.run('pendingPromotion = { row: 0, col: 0 };');
+  await f.run('exportChess("fen", "copy")');
+  assert.equal(f.storage.get('clipboard'), f.run('getChessPGN()'));
+});
+
+test('required profile cannot be dismissed, and renaming Player 1 preserves all records', () => {
+  const f = fixture();
+  f.run('profiles["Player 1"].setupComplete = false; profiles["Player 1"].chessScores.ai.win = 7; profiles["Player 1"].dominoesScores = { ai: {win: 4, loss: 1, draw: 0}, local: {win: 0, loss: 0, draw: 0} };');
+  assert.equal(f.run('requirePlayerProfile()'), false);
+  f.run('hideProfileDrawer(); startGame("tic");');
+  assert.equal(f.elements.get('profileOverlay').classList.contains('hidden'), false);
+  assert.equal(f.run('pendingGame'), null);
+  f.elements.get('editProfileInput').value = 'Moose';
+  f.elements.get('editProfilePin').value = '456';
+  f.run('updateProfileFromDrawer();');
+  assert.equal(f.run('hasPlayerProfile()'), true);
+  assert.equal(f.run('profiles.Moose.chessScores.ai.win'), 7);
+  assert.equal(f.run('profiles.Moose.dominoesScores.ai.win'), 4);
+  assert.equal(f.storage.get('currentProfile'), 'Moose');
+  assert.equal(f.run('Object.hasOwn(profiles, "Player 1")'), false);
+});
+
+test('existing named profiles remain usable and blank profile names are rejected', () => {
+  const f = fixture();
+  f.run('profiles.Moose = profiles["Player 1"]; profiles.Moose.setupComplete = false; currentProfile = "Moose";');
+  assert.equal(f.run('requirePlayerProfile()'), true);
+  f.elements.get('newProfileInput').value = '   ';
+  f.elements.get('newProfilePin').value = '123';
+  f.run('createProfileFromDrawer();');
+  assert.equal(f.run('currentProfile'), 'Moose');
+  assert.equal(f.run('Object.hasOwn(profiles, "")'), false);
 });

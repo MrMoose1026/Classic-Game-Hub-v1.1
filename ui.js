@@ -117,7 +117,32 @@ function playQuietBlockSound() {
 }
 
 //PROFILE MANAGEMENT
+function hasPlayerProfile() {
+  const profile = profiles[currentProfile];
+  return !!(currentProfile && currentProfile.trim() && profile &&
+    (currentProfile !== "Player 1" || profile.setupComplete));
+}
+
+function requirePlayerProfile() {
+  if (hasPlayerProfile()) return true;
+  showProfileDrawer();
+  const placeholder = currentProfile === "Player 1" && profiles[currentProfile];
+  if (placeholder) openEditProfile();
+  else showProfileView("switchProfileView");
+  document.getElementById("profileSetupNotice")?.classList.remove("hidden");
+  return false;
+}
+
+function finishProfileSetup() {
+  document.getElementById("profileSetupNotice")?.classList.add("hidden");
+  hideProfileDrawer();
+}
+
 function showProfileView(viewId) {
+  if (!hasPlayerProfile() && viewId === "profileMainView") {
+    requirePlayerProfile();
+    return;
+  }
   document.querySelectorAll(".profile-view").forEach(view => {
     view.classList.add("hidden");
   });
@@ -136,7 +161,8 @@ function updateProfileButton() {
 }
 
 function getProfileDisplayName() {
-  return `${profiles[currentProfile].avatar} ${currentProfile}`;
+  const profile = profiles[currentProfile];
+  return profile ? `${profile.avatar} ${currentProfile}` : "Choose Profile";
 }
 
 function getShortProfileName() {
@@ -206,19 +232,26 @@ function updateProfileFromDrawer() {
   const newName =
     document.getElementById("editProfileInput").value.trim();
 
-  if (!newName) {
+  if (!newName || ["__proto__", "constructor", "prototype"].includes(newName)) {
+    showSmokeSignal("Please enter a profile name.");
+    return;
+  }
+
+  const pin = document.getElementById("editProfilePin").value.trim();
+  if (!/^\d{3}$/.test(pin)) {
+    showSmokeSignal("Please enter a 3-digit PIN.");
     return;
   }
 
   const oldName = currentProfile;
   const profileData = profiles[oldName];
-    profileData.avatar = editSelectedAvatar;
-    profileData.pin = document.getElementById("editProfilePin").value.trim();
-
-  if (newName !== oldName && profiles[newName]) {
+  if (newName !== oldName && Object.hasOwn(profiles, newName)) {
     showSmokeSignal(`"${newName}" already exists and it is not you.`);
     return;
   }
+  profileData.avatar = editSelectedAvatar || "♟️";
+  profileData.pin = pin;
+  profileData.setupComplete = true;
 
   if (newName !== oldName) {
     profiles[newName] = profileData;
@@ -236,6 +269,7 @@ function updateProfileFromDrawer() {
   renderProfileList();
 
   showProfileView("profileMainView");
+  finishProfileSetup();
 }
 
 function updateProfilePin() {
@@ -310,6 +344,7 @@ function showProfileDrawer() {
 }
 
 function hideProfileDrawer() {
+  if (!hasPlayerProfile()) return;
   const overlay =
     document.getElementById("profileOverlay");
 
@@ -344,6 +379,10 @@ function updateProfileSummary() {
   if (!summary) {
     return;
   }
+  if (!currentProfile || !profiles[currentProfile]) {
+    summary.textContent = "Choose a profile to view your stats.";
+    return;
+  }
 
   summary.innerHTML = `
     Games Played: ${getGamesPlayed()}<br>
@@ -363,7 +402,12 @@ function createProfileFromDrawer() {
   const name =
     document.getElementById("newProfileInput").value.trim();
 
-  if (profiles[name]) {
+  if (!name || ["__proto__", "constructor", "prototype"].includes(name)) {
+    showSmokeSignal("Please enter a profile name.");
+    return;
+  }
+
+  if (Object.hasOwn(profiles, name)) {
     showSmokeSignal(`"${name}" already exists and it is not you.`);
     return;
   }
@@ -374,6 +418,7 @@ function createProfileFromDrawer() {
 
   profiles[currentProfile].avatar = selectedAvatar;
   profiles[currentProfile].pin = pin;
+  profiles[currentProfile].setupComplete = true;
 saveProfiles();
   loadCurrentProfileScores();
 updateProfileButton()
@@ -402,6 +447,7 @@ updateProfileButton()
 
   document.getElementById("profileMainView")
     .classList.remove("hidden");
+  finishProfileSetup();
 }
 
 function openStatisticsFromProfile() {
@@ -410,6 +456,7 @@ function openStatisticsFromProfile() {
 }
 
 function ensureProfileExists(name) {
+ if (!name) return;
 
  if (!profiles[name]) {
  profiles[name] = {
@@ -498,8 +545,8 @@ if (!profiles[name].chessScores.local) {
 
   profiles[name].chessScores = {
     ai: {
-      win: old.player || 0,
-      loss: old.ai || 0,
+      win: old.player || old.wins || 0,
+      loss: old.ai || old.losses || 0,
       draw: old.draws || 0
     },
 
@@ -527,6 +574,7 @@ function saveProfiles() {
 }
 
 function loadCurrentProfileScores() {
+ if (!currentProfile || !profiles[currentProfile]) return;
  ensureProfileExists(currentProfile);
 
  ticScores =
@@ -643,6 +691,7 @@ function actuallyDeleteProfile(currentProfile) {
 
   renderProfileList();
   showProfileView("switchProfileView");
+  document.getElementById("profileSetupNotice")?.classList.remove("hidden");
 }
 
 function switchProfile(name) {
@@ -680,6 +729,8 @@ function switchProfile(name) {
 
   document.getElementById("profileMainView")
     .classList.remove("hidden");
+  if (hasPlayerProfile()) finishProfileSetup();
+  else requirePlayerProfile();
 }
 
 function getGamesPlayed() {
@@ -817,6 +868,7 @@ saveProfiles();
 
 //MAIN MENU
 function startGame(game) {
+  if (!requirePlayerProfile()) return;
   pendingGame = game;
 
   const menu =
@@ -1002,6 +1054,17 @@ function showChessTimeScreen() {
     <div class="mode-select-screen"
          style="flex-direction:column;align-items:center;gap:18px;">
 
+      ${chessGameMode === "ai" ? `
+        <label for="chessColorSelect">Play as</label>
+        <select id="chessColorSelect">
+          ${["white", "black", "random"].map(color => `
+            <option value="${color}" ${color === chessColorChoice ? "selected" : ""}>
+              ${capitalize(color)}
+            </option>
+          `).join("")}
+        </select>
+      ` : ""}
+
       <label for="chessTimeSelect">
         Time per player
       </label>
@@ -1051,6 +1114,7 @@ function showChessTimeScreen() {
 }
 
 function launchPendingGame() {
+  if (!requirePlayerProfile()) return;
   if (pendingGame === "tic") {
     loadTicTacToe();
   } else if (pendingGame === "connect4") {
@@ -1329,6 +1393,8 @@ function hideConfirmation() {
 }
 initializeAvatarPicker();
 updateProfileButton();
+// Wait for every game script before calculating the profile summary.
+setTimeout(requirePlayerProfile, 0);
 
 // DOMINOES STATS AND SOUNDS
 const dominoTileSound = new Audio("img/tile-soft.mp3");

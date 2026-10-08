@@ -71,6 +71,76 @@ async function animateChessMove(move) {
 
 const chessPieceLetters = { king: "K", queen: "Q", rook: "R", bishop: "B", knight: "N" };
 
+let chessExportMetadata = null;
+let chessExportResult = "*";
+
+function getChessFEN() {
+  if (chessBoard.length !== 8) return "";
+  const letters = { pawn: "p", knight: "n", bishop: "b", rook: "r", queen: "q", king: "k" };
+  const placement = chessBoard.map(row => {
+    let text = "", empty = 0;
+    for (const piece of row) {
+      if (!piece) { empty++; continue; }
+      if (empty) { text += empty; empty = 0; }
+      const letter = letters[piece.type];
+      text += piece.color === "white" ? letter.toUpperCase() : letter;
+    }
+    return text + (empty || "");
+  }).join("/");
+  let rights = "";
+  for (const [row, color, kingSide, queenSide] of [[7, "white", "K", "Q"], [0, "black", "k", "q"]]) {
+    const king = chessBoard[row][4];
+    if (king?.type !== "king" || king.color !== color || king.hasMoved) continue;
+    for (const [col, symbol] of [[7, kingSide], [0, queenSide]]) {
+      const rook = chessBoard[row][col];
+      if (rook?.type === "rook" && rook.color === color && !rook.hasMoved) rights += symbol;
+    }
+  }
+  const enPassant = lastChessMove?.pieceType === "pawn" &&
+    Math.abs(lastChessMove.fromRow - lastChessMove.toRow) === 2
+    ? chessSquareName((lastChessMove.fromRow + lastChessMove.toRow) / 2, lastChessMove.toCol) : "-";
+  return `${placement} ${chessCurrentPlayer === "white" ? "w" : "b"} ${rights || "-"} ${enPassant} ${chessHalfMoveClock} ${Math.floor(chessMoveHistory.length / 2) + 1}`;
+}
+
+function getChessPGN() {
+  if (!chessExportMetadata) return "";
+  const escape = value => String(value).replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/[\r\n]/g, " ");
+  const tags = { ...chessExportMetadata, Result: chessExportResult };
+  const headers = Object.entries(tags).map(([key, value]) => `[${key} "${escape(value)}"]`).join("\n");
+  const turns = [];
+  for (let i = 0; i < chessMoveHistory.length; i += 2) {
+    turns.push(`${i / 2 + 1}. ${chessMoveHistory[i]}${chessMoveHistory[i + 1] ? " " + chessMoveHistory[i + 1] : ""}`);
+  }
+  return headers + "\n\n" + [...turns, chessExportResult].join(" ") + "\n";
+}
+
+async function exportChess(format, action) {
+  if (chessAnimationRunning || pendingPromotion) {
+    showSmokeSignal("Finish the move before exporting.");
+    return;
+  }
+  const text = format === "pgn" ? getChessPGN() : getChessFEN();
+  if (!text) return;
+  if (action === "copy") {
+    try {
+      await navigator.clipboard.writeText(text);
+      showSmokeSignal(`${format.toUpperCase()} copied!`);
+    } catch {
+      // A selectable dialog also works when clipboard access is unavailable.
+      window.prompt(`Copy ${format.toUpperCase()}:`, text);
+    }
+    return;
+  }
+  const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `CGH-chess-${chessExportMetadata.Date.replace(/\./g, "-")}.${format}`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 // Build the base SAN before moving, while alternative legal origins still exist.
 function buildChessSAN(move, piece) {
   if (move.castle) return move.castle === "kingside" ? "O-O" : "O-O-O";
@@ -96,6 +166,9 @@ function buildChessSAN(move, piece) {
 
 //CHESS
 function loadChess() {
+  if (!requirePlayerProfile()) return;
+  const bottomColor = getChessHumanColor();
+  const topColor = bottomColor === "white" ? "black" : "white";
   hideAppTitle();
   setGameAreaContent(`
     <h2 class="chess-title">Chess</h2>
@@ -119,14 +192,14 @@ function loadChess() {
 
   <div class="chess-center">
   <div class="chess-clock"></div>
-  <div class="clock-player"></div>
-    <div id="player2Time">05:00</div>
+  <div id="chessTopPlayer" class="clock-player"></div>
+    <div id="${topColor === "white" ? "player1Time" : "player2Time"}">05:00</div>
 
   <div id="chessBoard" class="chess-board"></div>
 
    <div class="chess-clock"> </div>
-  <div class="clock-player"></div>
-    <div id="player1Time">05:00</div>
+  <div id="chessBottomPlayer" class="clock-player"></div>
+    <div id="${bottomColor === "white" ? "player1Time" : "player2Time"}">05:00</div>
   </div>
 
   <div id="moveHistory" class="chess-side-panel">
@@ -152,6 +225,12 @@ function loadChess() {
   </button>`
       : ""}
 </div>
+  <div class="chess-export-actions" aria-label="Export chess game">
+    <button onclick="exportChess('pgn', 'copy')">Copy PGN</button>
+    <button onclick="exportChess('pgn', 'download')">Download PGN</button>
+    <button onclick="exportChess('fen', 'copy')">Copy FEN</button>
+    <button onclick="exportChess('fen', 'download')">Download FEN</button>
+  </div>
   `);
   
 initializeChess();
@@ -161,7 +240,15 @@ chessClockStarted = true;
 document.getElementById("chessStatus").textContent =
   `${getChessPlayerName("white")}'s Turn`;
 
+document.getElementById("chessTopPlayer").textContent =
+  `${getChessPlayerName(topColor)} · ${capitalize(topColor)}`;
+document.getElementById("chessBottomPlayer").textContent =
+  `${getChessPlayerName(bottomColor)} · ${capitalize(bottomColor)}`;
 startClock(1);
+if (chessGameMode === "ai" && chessCurrentPlayer === chessAIPlayer) {
+  document.getElementById("chessStatus").textContent = "AI Thinking...";
+  scheduleChessAI();
+}
 }
 
 function preloadChessPieces() {
@@ -219,6 +306,14 @@ chessWorker.onerror = function(error) {
 };
 
 function initializeChess() {
+  chessExportResult = "*";
+  const date = new Date();
+  chessExportMetadata = {
+    Event: "Classic Games Hub", Site: "CGH",
+    Date: `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.${String(date.getDate()).padStart(2, "0")}`,
+    Round: "-", White: getChessPlayerName("white"), Black: getChessPlayerName("black"),
+    TimeControl: chessTimeMinutes === 0 ? "-" : `${chessTimeMinutes * 60}+${chessIncrementSeconds}`
+  };
   cancelChessAnimation();
 stockfishMoveHistory = [];
 lastChessMove = null;
@@ -275,6 +370,18 @@ highlightedChessMoves = [];
   renderChessBoard();
 }
 
+const savedChessColorChoice = localStorage.getItem("chessColorChoice");
+let chessColorChoice = ["white", "black", "random"].includes(savedChessColorChoice)
+  ? savedChessColorChoice : "white";
+
+function getChessHumanColor() {
+  return chessGameMode === "ai" && chessAIPlayer === "white" ? "black" : "white";
+}
+
+function getChessResultForWinner(winner) {
+  return winner === getChessHumanColor() ? "win" : "loss";
+}
+
 let chessTimeMinutes = 5;
 let chessIncrementSeconds = 0;
 let chessClockStarted = false;
@@ -308,6 +415,9 @@ async function startSelectedChessGame() {
     [0, 1, 2, 3, 5, 10].includes(increment)
       ? increment : 0;
 
+  const chosenColor = document.getElementById("chessColorSelect")?.value;
+  const colorChoice = ["white", "black", "random"].includes(chosenColor)
+    ? chosenColor : chessColorChoice;
   button.disabled = true;
 
   try {
@@ -326,6 +436,15 @@ async function startSelectedChessGame() {
       return;
     }
 
+    if (chessGameMode === "ai") {
+      chessColorChoice = colorChoice;
+      localStorage.setItem("chessColorChoice", colorChoice);
+      const humanColor = colorChoice === "random"
+        ? (Math.random() < 0.5 ? "white" : "black") : colorChoice;
+      chessAIPlayer = humanColor === "white" ? "black" : "white";
+    } else {
+      chessAIPlayer = "black";
+    }
     loadChess();
 
   } catch (error) {
@@ -452,6 +571,7 @@ function resetChessClock() {
 
   [
     "chessTimeSelect",
+    "chessColorSelect",
     "chessIncrementSelect",
     "chessStartButton"
   ].forEach(id => {
@@ -470,7 +590,7 @@ function resetChessClock() {
 
 function getChessPlayerName(player) {
   if (chessGameMode === "ai") {
-    return player === "white"
+    return player === getChessHumanColor()
       ? getShortProfileName()
       : "AI";
   }
@@ -481,6 +601,9 @@ function getChessPlayerName(player) {
 }
 
 function recordChessResult(result) {
+  const humanColor = getChessHumanColor();
+  const winner = result === "win" ? humanColor : humanColor === "white" ? "black" : "white";
+  chessExportResult = result === "draw" ? "1/2-1/2" : winner === "white" ? "1-0" : "0-1";
   const mode = chessGameMode === "ai"
     ? "ai"
     : "local";
@@ -565,6 +688,8 @@ function renderChessBoard() {
       const index = row * 8 + col;
       const square =
         boardElement.children[index];
+      // Keep logical indices stable for clicks and animations; flip visually.
+      square.style.order = getChessHumanColor() === "black" ? 63 - index : index;
 
       const pieceElement =
         square.querySelector(".chess-piece");
@@ -1761,13 +1886,7 @@ function resignationConfirmed() {
   chessGameActive = false;
   stopChessClock();
 
-  recordChessResult(
-    chessGameMode === "ai"
-      ? "loss"
-      : winner === "white"
-        ? "win"
-        : "loss"
-  );
+  recordChessResult(getChessResultForWinner(winner));
 
   renderChessBoard();
 }
@@ -1800,7 +1919,7 @@ function handleChessTimeout(flaggedPlayer) {
       `${winner} wins on time!`;
 
         recordChessResult(
-      flaggedPlayer === 1 ? "loss" : "win"
+      getChessResultForWinner(opponentColor)
     );
   }
 
@@ -1824,12 +1943,7 @@ function checkChessGameOver(color) {
       .textContent =
       `Checkmate! ${getChessPlayerName(winner)} Wins!`;
 
-    if (winner === "white") {
-      recordChessResult("win");
-    }
-    if (winner === "black") {
-      recordChessResult("loss");
-    }
+    recordChessResult(getChessResultForWinner(winner));
     chessGameActive = false;
     stopChessClock();
     return true;
