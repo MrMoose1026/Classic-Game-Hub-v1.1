@@ -2203,3 +2203,117 @@ color: #4b7bec;
 #profileSetupNotice {
   line-height: 1.5;
 }
+
+/* Dominoes variations and All Fives match scoring */
+.domino-variant-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  width: min(700px, 94%);
+  margin: 24px auto;
+}
+.domino-variant-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin: 0;
+  padding: 24px;
+  color: inherit;
+  background: rgba(127, 127, 127, 0.12);
+  border: 2px solid currentColor;
+  border-radius: 16px;
+  white-space: normal;
+  line-height: 1.5;
+  cursor: pointer;
+}
+.domino-variant-card strong { font-size: 1.5rem; }
+.domino-variant-icon { font-size: 2rem; }
+.domino-variant-card:hover,
+.domino-variant-card:focus-visible { outline: 3px solid #ffd166; outline-offset: 3px; }
+.domino-game { position: relative; }
+.domino-scoreboard {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 420px;
+  margin: 16px auto;
+}
+.domino-score {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  border: 1px solid currentColor;
+  border-radius: 12px;
+  background: rgba(127, 127, 127, 0.12);
+}
+.domino-score strong { font-size: 2rem; }
+.domino-scoreboard > small { grid-column: 1 / -1; }
+.domino-score-earned { animation: dominoScorePulse 0.65s ease-out; }
+.domino-score-pop {
+  position: absolute;
+  top: 180px;
+  left: 50%;
+  z-index: 2;
+  width: max-content;
+  max-width: 90%;
+  margin: 0;
+  padding: 10px 16px;
+  border-radius: 12px;
+  color: #171717;
+  background: #ffd166;
+  font-weight: bold;
+  pointer-events: none;
+  transform: translateX(-50%);
+  animation: dominoScorePop 2.4s ease-out forwards;
+}
+.domino-score-big { font-size: 1.2rem; box-shadow: 0 0 24px #ffd16688; }
+.domino-game .domino-chain {
+  flex-direction: column;
+  padding: 12px 6px;
+}
+.domino-main-line,
+.domino-arm-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  max-width: 100%;
+}
+.domino-arm {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 0;
+  border-top: 1px dashed currentColor;
+  border-bottom: 1px dashed currentColor;
+}
+.domino-game .domino-double { flex-direction: column; }
+.domino-game .domino-double .domino-half + .domino-half {
+  border-left: 0;
+  border-top: 2px solid #555;
+}
+.domino-game .domino-spinner { border-color: #b07810; box-shadow: 0 0 0 2px #ffd166; }
+.domino-end-total { font-weight: 500; }
+.domino-variant-stats p { font-size: 0.9rem; }
+@keyframes dominoScorePulse {
+  50% { transform: scale(1.08); box-shadow: 0 0 18px #ffd166; }
+}
+@keyframes dominoScorePop {
+  0% { opacity: 0; transform: translate(-50%, 12px) scale(0.9); }
+  15%, 75% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -28px) scale(1); }
+}
+@media (max-width: 650px) {
+  .domino-variant-grid { grid-template-columns: 1fr; gap: 14px; }
+  .domino-variant-card { padding: 18px; }
+  .domino-main-line, .domino-arm-tiles { gap: 8px; }
+  .domino-targets { flex-wrap: wrap; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .domino-score-earned, .domino-score-pop { animation: none; }
+}

@@ -225,7 +225,7 @@ Sound: On
   <div class="game-card" onclick="startGame('connect4')"><h2>Connect Four</h2> Drop pieces and connect four</div>
   <div class="game-card" onclick="startGame('checkers')"><h2>Checkers</h2> Capture, King, and Conquer</div>
   <div class="game-card" onclick="startGame('chess')"><h2>Chess</h2> Checkmate to win</div>
-  <div class="game-card" onclick="startGame('dominoes')"><h2>Dominoes</h2> Match tiles and clear your hand</div>
+  <div class="game-card" onclick="startGame('dominoes')"><h2>Dominoes</h2> Classic or All Fives</div>
   <div class="game-card" onclick="startGame('backgammon')"><h2>Backgammon</h2> Roll, race, and bear off</div>
 </div>
 
@@ -233,6 +233,24 @@ Sound: On
 <button id="backButton" onclick="showMenu()">
 Back to Menu
 </button>
+<template id="dominoesVariantTemplate">
+  <section class="domino-variant-select">
+    <h2>Dominoes</h2>
+    <p>Choose your variation</p>
+    <div class="domino-variant-grid">
+      <button class="domino-variant-card" onclick="selectDominoesVariant('classic')">
+        <span class="domino-variant-icon" aria-hidden="true">🁣</span>
+        <strong>Classic</strong>
+        <span>Match the ends and empty your hand. One round decides the winner.</span>
+      </button>
+      <button class="domino-variant-card" onclick="selectDominoesVariant('allfives')">
+        <span class="domino-variant-icon" aria-hidden="true">🏆</span>
+        <strong>All Fives</strong>
+        <span>Score multiples of five from the open ends. Play rounds toward a winning score.</span>
+      </button>
+    </div>
+  </section>
+</template>
 <div id="gameArea"></div>
 </div>
 <div id="promotionOverlay" class="promotion-overlay hidden">
@@ -242,6 +260,7 @@ Back to Menu
     <div id="promotionChoices" class="promotion-choices"></div>
   </div>
 
+</div>
 <script src="state.js"></script>
 <script src="ui.js"></script>
 <script src="tictactoe.js"></script>
@@ -254,11 +273,10 @@ Back to Menu
 <script src="backgammon.js"></script>
 <script>
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.getRegistration().then(async (registration) => {
-      if (registration) {
-        await registration.unregister();
-        window.location.reload();
-      }
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./service-worker.js")
+        .then(registration => registration.update())
+        .catch(error => console.error("Service worker registration failed:", error));
     });
   }
 </script>

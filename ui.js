@@ -787,6 +787,15 @@ function showStatistics() {
             : ""}
         </div>
       </div>
+      ${name === "Dominoes" ? `
+        <details class="domino-variant-stats">
+          <summary>Classic / All Fives results</summary>
+          ${Object.entries(scores.variants).map(([variant, modes]) => `
+            <h4>${variant === "classic" ? "Classic" : "All Fives"}</h4>
+            <p>VS AI: ${modes.ai.win} wins · ${modes.ai.loss} losses · ${modes.ai.draw} draws</p>
+            <p>VS Player (Player 1): ${modes.local.win} wins · ${modes.local.loss} losses · ${modes.local.draw} draws</p>
+          `).join("")}
+        </details>` : ""}
     </div>
   `).join("");
 
@@ -887,7 +896,11 @@ function startGame(game) {
 
     backButton.style.display = "inline-block";
 
-    showModeSelectScreen();
+    if (game === "dominoes") {
+      showDominoesVariantScreen();
+    } else {
+      showModeSelectScreen();
+    }
   }, 300);
 }
 
@@ -903,9 +916,41 @@ function hideAppTitle() {
       .classList.add("hidden-title");
 }
 
+function showDominoesVariantScreen() {
+  dominoes.stop();
+  hideAppTitle();
+  const template = document.getElementById("dominoesVariantTemplate");
+  setGameAreaContent(template.innerHTML);
+}
+
+function selectDominoesVariant(variant) {
+  if (!["classic", "allfives"].includes(variant)) return;
+  dominoes.variant = variant;
+  showModeSelectScreen();
+}
+
+function showDominoesTargetScreen() {
+  setGameAreaContent(`
+    <h2>All Fives — Winning Score</h2>
+    <p>Points carry over between rounds. First to the target wins.</p>
+    <div class="mode-select-screen domino-targets">
+      <button onclick="startDominoesMatch(100)">100 · Quick</button>
+      <button onclick="startDominoesMatch(150)">150 · Standard</button>
+      <button onclick="startDominoesMatch(200)">200 · Extended</button>
+    </div>
+    <button onclick="${dominoes.mode === "ai" ? "showDifficultyScreen()" : "showModeSelectScreen()"}">Back</button>
+  `);
+}
+
+function startDominoesMatch(target) {
+  if (![100, 150, 200].includes(target)) return;
+  dominoes.targetScore = target;
+  launchPendingGame();
+}
+
 function showModeSelectScreen() {
  setGameAreaContent(`
- <h2>Select Mode</h2>
+ <h2>${pendingGame === "dominoes" ? `Dominoes — ${dominoes.variant === "allfives" ? "All Fives" : "Classic"}` : "Select Mode"}</h2>
 
  <div class="mode-select-screen">
  <button onclick="selectGameMode('ai')">
@@ -913,9 +958,10 @@ function showModeSelectScreen() {
  </button>
 
  <button onclick="selectGameMode('local')">
- VS Local
+ ${pendingGame === "dominoes" ? "VS Player" : "VS Local"}
  </button>
  </div>
+ ${pendingGame === "dominoes" ? `<button onclick="showDominoesVariantScreen()">Back to variations</button>` : ""}
  `);
 }
 function selectGameMode(mode) {
@@ -956,6 +1002,8 @@ function selectGameMode(mode) {
   showDifficultyScreen();
 } else if (pendingGame === "chess") {
   showChessTimeScreen();
+} else if (pendingGame === "dominoes" && dominoes.variant === "allfives") {
+  showDominoesTargetScreen();
 } else {
   launchPendingGame();
 }
@@ -1001,6 +1049,7 @@ ${pendingGame === "checkers"
   : ""}
 
  </div>
+ ${pendingGame === "dominoes" ? `<button onclick="showModeSelectScreen()">Back to opponents</button>` : ""}
  `);
 }
 
@@ -1029,6 +1078,8 @@ function selectDifficulty(difficulty) {
 
   if (pendingGame === "chess") {
     showChessTimeScreen();
+  } else if (pendingGame === "dominoes" && dominoes.variant === "allfives") {
+    showDominoesTargetScreen();
   } else {
     launchPendingGame();
   }
@@ -1215,7 +1266,8 @@ function showMenu() {
             recordDominoesResult(
               1,
               dominoes.mode,
-              dominoes.scoreProfile
+              dominoes.scoreProfile,
+              dominoes.variant
             );
             playGameResultSound(dominoes.mode, "loss");
             break;
@@ -1437,16 +1489,28 @@ function getDominoesScores(name = currentProfile) {
     saveProfiles();
   }
 
-  return profiles[name].dominoesScores;
+  const scores = profiles[name].dominoesScores;
+  if (!scores.variants) {
+    scores.variants = {
+      classic: { ai: { ...scores.ai }, local: { ...scores.local } },
+      allfives: {
+        ai: { win: 0, loss: 0, draw: 0 },
+        local: { win: 0, loss: 0, draw: 0 }
+      }
+    };
+    saveProfiles();
+  }
+  return scores;
 }
 
-function recordDominoesResult(winner, mode, name) {
+function recordDominoesResult(winner, mode, name, variant = "classic") {
   const scores = getDominoesScores(name);
   const result = winner < 0
     ? "draw"
     : winner === 0 ? "win" : "loss";
 
   scores[mode][result]++;
+  scores.variants[variant][mode][result]++;
   saveProfiles();
   updateProfileSummary();
 }
