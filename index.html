@@ -237,17 +237,19 @@ Back to Menu
   <section class="domino-variant-select">
     <h2>Dominoes</h2>
     <p>Choose your variation</p>
-    <div class="domino-variant-grid">
-      <button class="domino-variant-card" onclick="selectDominoesVariant('classic')">
-        <span class="domino-variant-icon" aria-hidden="true">🁣</span>
-        <strong>Classic</strong>
-        <span>Match the ends and empty your hand. One round decides the winner.</span>
-      </button>
-      <button class="domino-variant-card" onclick="selectDominoesVariant('allfives')">
-        <span class="domino-variant-icon" aria-hidden="true">🏆</span>
-        <strong>All Fives</strong>
-        <span>Score multiples of five from the open ends. Play rounds toward a winning score.</span>
-      </button>
+    <div class="game-grid domino-variant-grid">
+      <div class="game-card" role="button" tabindex="0"
+        onclick="selectDominoesVariant('classic')"
+        onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }">
+        <h2>Classic</h2>
+        Match tiles and clear your hand
+      </div>
+      <div class="game-card" role="button" tabindex="0"
+        onclick="selectDominoesVariant('allfives')"
+        onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); this.click(); }">
+        <h2>All Fives</h2>
+        Score multiples of five to win the match
+      </div>
     </div>
   </section>
 </template>
