@@ -2281,7 +2281,6 @@ color: #4b7bec;
 }
 .domino-game .domino-spinner { border-color: #b07810; box-shadow: 0 0 0 2px #ffd166; }
 .domino-end-total { font-weight: 500; }
-.domino-variant-stats p { font-size: 0.9rem; }
 @keyframes dominoScorePulse {
   50% { transform: scale(1.08); box-shadow: 0 0 18px #ffd166; }
 }
@@ -2296,4 +2295,40 @@ color: #4b7bec;
 }
 @media (prefers-reduced-motion: reduce) {
   .domino-score-earned, .domino-score-pop { animation: none; }
+}
+
+/* Space setup navigation apart from the choices above it. */
+.domino-setup-back {
+  display: flex;
+  justify-content: center;
+  margin-top: 24px;
+}
+
+/* Switch between totals and variants within the usual stats layout. */
+.domino-stats-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0 20px;
+}
+.domino-stats-tabs button {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-size: 14px;
+  color: inherit;
+  background: transparent;
+  box-shadow: none;
+}
+.domino-stats-tabs button[aria-pressed="true"],
+.domino-stats-tabs button:hover {
+  color: inherit;
+  background: rgba(127, 127, 127, 0.16);
+  border-color: currentColor;
+}
+.domino-stats-tabs button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
 }

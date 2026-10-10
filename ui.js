@@ -768,34 +768,18 @@ function showStatistics() {
   const cards = getStatGames().map(([name, scores]) => `
     <div class="stat-card">
       <h3>${name}</h3>
-
-      <div class="stat-matchups">
-        <div class="stat-matchup">
-          <h4>VS AI</h4>
-          <p>Wins: ${scores.ai.win}</p>
-          <p>Losses: ${scores.ai.loss}</p>
-          <p>Draws: ${scores.ai.draw}</p>
-        </div>
-
-        <div class="stat-matchup">
-          <h4>VS Player</h4>
-          <p>Wins: ${scores.local.win}</p>
-          <p>Losses: ${scores.local.loss}</p>
-          <p>Draws: ${scores.local.draw}</p>
-          ${name === "Dominoes"
-            ? "<small>Results for Player 1</small>"
-            : ""}
-        </div>
-      </div>
       ${name === "Dominoes" ? `
-        <details class="domino-variant-stats">
-          <summary>Classic / All Fives results</summary>
-          ${Object.entries(scores.variants).map(([variant, modes]) => `
-            <h4>${variant === "classic" ? "Classic" : "All Fives"}</h4>
-            <p>VS AI: ${modes.ai.win} wins · ${modes.ai.loss} losses · ${modes.ai.draw} draws</p>
-            <p>VS Player (Player 1): ${modes.local.win} wins · ${modes.local.loss} losses · ${modes.local.draw} draws</p>
+        <div class="domino-stats-tabs" role="group" aria-label="Dominoes statistics">
+          ${[["overall", "Overall"], ["classic", "Classic"], ["allfives", "All Fives"]].map(([variant, label]) => `
+            <button type="button" data-variant="${variant}"
+              aria-pressed="${variant === "overall"}"
+              onclick="selectDominoesStats('${variant}')">${label}</button>
           `).join("")}
-        </details>` : ""}
+        </div>
+        <div id="dominoStatsMatchups" aria-live="polite">
+          ${getStatsMatchupsHTML(scores, true)}
+        </div>
+      ` : getStatsMatchupsHTML(scores)}
     </div>
   `).join("");
 
@@ -814,6 +798,35 @@ function showStatistics() {
 
   document.getElementById("statisticsProfileName").textContent =
     getProfileDisplayName();
+}
+
+function getStatsMatchupsHTML(scores, playerOne = false) {
+  return `<div class="stat-matchups">
+    <div class="stat-matchup">
+      <h4>VS AI</h4>
+      <p>Wins: ${scores.ai.win}</p>
+      <p>Losses: ${scores.ai.loss}</p>
+      <p>Draws: ${scores.ai.draw}</p>
+    </div>
+    <div class="stat-matchup">
+      <h4>VS Player</h4>
+      <p>Wins: ${scores.local.win}</p>
+      <p>Losses: ${scores.local.loss}</p>
+      <p>Draws: ${scores.local.draw}</p>
+      ${playerOne ? "<small>Results for Player 1</small>" : ""}
+    </div>
+  </div>`;
+}
+
+function selectDominoesStats(variant) {
+  if (!["overall", "classic", "allfives"].includes(variant)) return;
+  const panel = document.getElementById("dominoStatsMatchups");
+  if (!panel) return;
+  const scores = getDominoesScores();
+  panel.innerHTML = getStatsMatchupsHTML(variant === "overall" ? scores : scores.variants[variant], true);
+  document.querySelectorAll(".domino-stats-tabs button").forEach(button => {
+    button.setAttribute("aria-pressed", String(button.dataset.variant === variant));
+  });
 }
 
 function resetAllScores() {
@@ -938,7 +951,9 @@ function showDominoesTargetScreen() {
       <button onclick="startDominoesMatch(150)">150 · Standard</button>
       <button onclick="startDominoesMatch(200)">200 · Extended</button>
     </div>
-    <button onclick="${dominoes.mode === "ai" ? "showDifficultyScreen()" : "showModeSelectScreen()"}">Back</button>
+    <div class="domino-setup-back">
+      <button onclick="${dominoes.mode === "ai" ? "showDifficultyScreen()" : "showModeSelectScreen()"}">Back</button>
+    </div>
   `);
 }
 
@@ -961,7 +976,7 @@ function showModeSelectScreen() {
  ${pendingGame === "dominoes" ? "VS Player" : "VS Local"}
  </button>
  </div>
- ${pendingGame === "dominoes" ? `<button onclick="showDominoesVariantScreen()">Back to variations</button>` : ""}
+ ${pendingGame === "dominoes" ? `<div class="domino-setup-back"><button onclick="showDominoesVariantScreen()">Back to variations</button></div>` : ""}
  `);
 }
 function selectGameMode(mode) {
@@ -1049,7 +1064,7 @@ ${pendingGame === "checkers"
   : ""}
 
  </div>
- ${pendingGame === "dominoes" ? `<button onclick="showModeSelectScreen()">Back to opponents</button>` : ""}
+ ${pendingGame === "dominoes" ? `<div class="domino-setup-back"><button onclick="showModeSelectScreen()">Back to opponents</button></div>` : ""}
  `);
 }
 
