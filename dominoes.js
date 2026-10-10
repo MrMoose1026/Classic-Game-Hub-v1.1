@@ -660,6 +660,7 @@ const dominoes = {
       this.finishMatch(winner);
       return;
     }
+    playGameResultSound(this.mode, winner < 0 ? "draw" : winner === 0 ? "win" : "loss");
     this.roundOver = true;
     this.revealed = true;
     this.nextStarter = blocked ? null : winner;
