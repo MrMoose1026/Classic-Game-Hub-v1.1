@@ -901,10 +901,12 @@ const dominoes = {
             : ""
         }
 
-        ${this.variant === "allfives"
-          ? `${this.roundOver ? `<button onclick="dominoes.nextRound()">Next round</button>` : ""}
-             <button onclick="dominoes.restartMatch()">${this.active ? "Restart match" : "New match"}</button>`
-          : `<button onclick="dominoes.start()">New round</button>`}
+        <div class="domino-match-actions">
+          ${this.variant === "allfives"
+            ? `${this.roundOver ? `<button onclick="dominoes.nextRound()">Next round</button>` : ""}
+               <button onclick="dominoes.restartMatch()">${this.active ? "Restart match" : "New match"}</button>`
+            : `<button onclick="dominoes.start()">New round</button>`}
+        </div>
 
         <details>
           <summary>How to play</summary>

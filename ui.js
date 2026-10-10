@@ -1471,17 +1471,90 @@ const dominoLossSound = new Audio("img/loss.mp3");
 dominoLossSound.volume = 0.5;
 [dominoTileSound, dominoLossSound].forEach(preloadGameSound);
 
-function playGameResultSound(mode, result) {
+// Keep one gesture-unlocked context and decoded buffers for round/match results.
+// A new buffer source is created per result, so completed players are never reused.
+let gameResultAudioContext = null;
+const gameResultSoundBuffers = new Map();
+
+function loadGameResultBuffer(source, context) {
+  const key = source.src;
+  if (gameResultSoundBuffers.has(key)) return gameResultSoundBuffers.get(key);
+  const pending = fetch(key)
+    .then(response => {
+      if (!response.ok) throw new Error("Result sound could not be loaded");
+      return response.arrayBuffer();
+    })
+    .then(bytes => context.decodeAudioData(bytes))
+    .catch(() => {
+      gameResultSoundBuffers.delete(key);
+      return null;
+    });
+  gameResultSoundBuffers.set(key, pending);
+  return pending;
+}
+
+function unlockGameResultAudio() {
+  if (!soundEnabled) return;
+  const Context = window.AudioContext || window.webkitAudioContext;
+  if (!Context) return;
+  try {
+    if (!gameResultAudioContext || gameResultAudioContext.state === "closed") {
+      gameResultAudioContext = new Context();
+      const silent = gameResultAudioContext.createBufferSource();
+      silent.buffer = gameResultAudioContext.createBuffer(1, 1, gameResultAudioContext.sampleRate);
+      silent.connect(gameResultAudioContext.destination);
+      silent.onended = () => silent.disconnect();
+      silent.start();
+    }
+    if (gameResultAudioContext.state !== "running") {
+      gameResultAudioContext.resume().catch(() => {});
+    }
+    [winSound, dominoLossSound].forEach(source => loadGameResultBuffer(source, gameResultAudioContext));
+  } catch (error) {
+    gameResultAudioContext = null;
+  }
+}
+
+// Resume again on later gestures if Safari interrupts audio after an app switch.
+["pointerdown", "click", "keydown"].forEach(event => {
+  document.addEventListener(event, unlockGameResultAudio, { capture: true });
+});
+
+async function playGameResultSound(mode, result) {
   if (!soundEnabled || result === "draw") return;
-
-  const source =
-    mode === "ai" && result === "loss"
-      ? dominoLossSound
-      : winSound;
-
-  const sound = getReadySound(source);
-  sound.volume = source.volume;
-  sound.play().catch(() => {});
+  const source = mode === "ai" && result === "loss" ? dominoLossSound : winSound;
+  const context = gameResultAudioContext;
+  if (context && context.state !== "closed") {
+    try {
+      if (context.state !== "running") await context.resume();
+      const buffer = await loadGameResultBuffer(source, context);
+      if (!soundEnabled) return;
+      if (buffer && context.state === "running") {
+        const voice = context.createBufferSource();
+        const gain = context.createGain();
+        voice.buffer = buffer;
+        gain.gain.value = source.volume;
+        voice.connect(gain);
+        gain.connect(context.destination);
+        voice.onended = () => { voice.disconnect(); gain.disconnect(); };
+        voice.start();
+        return;
+      }
+    } catch (error) {
+      // Use the original, warmed HTML player if Web Audio is unavailable.
+    }
+  }
+  if (!soundEnabled) return;
+  const primary = preloadGameSound(source)[0];
+  primary.warming = false;
+  source.pause();
+  source.currentTime = 0;
+  source.muted = false;
+  try {
+    await source.play();
+  } catch (error) {
+    console.warn("Game result sound could not play:", error);
+  }
 }
 
 function playDominoSound(source) {

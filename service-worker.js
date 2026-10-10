@@ -1,4 +1,4 @@
-const CACHE_NAME = "cgh-v1.4.16";
+const CACHE_NAME = "cgh-v1.4.17";
 
 const FILES_TO_CACHE = [
   "./",

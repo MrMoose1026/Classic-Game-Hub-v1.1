@@ -2332,3 +2332,16 @@ color: #4b7bec;
   outline: 2px solid currentColor;
   outline-offset: 3px;
 }
+
+/* Separate match controls from draw/pass and the rules below them. */
+.domino-game .domino-actions,
+.domino-game .domino-match-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+.domino-game .domino-match-actions {
+  margin-top: 24px;
+  margin-bottom: 16px;
+}

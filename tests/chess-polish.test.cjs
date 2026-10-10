@@ -10,16 +10,19 @@ function fixture({ cellSize = 50, audio = false } = {}) {
   const audioVoices = [];
   const playedSounds = [];
   const audioGains = [];
+  const audioContexts = [];
+  const audioRequests = [];
   class AudioContext {
-    constructor() { this.state = 'suspended'; this.destination = {}; }
-    resume() { this.state = 'running'; return Promise.resolve(); }
+    constructor() { this.state = 'suspended'; this.destination = {}; this.sampleRate = 44100; this.resumeCount = 0; audioContexts.push(this); }
+    resume() { this.resumeCount++; this.state = 'running'; return Promise.resolve(); }
+    createBuffer() { return { silent: true }; }
     decodeAudioData(data) { return Promise.resolve({ data }); }
     createBufferSource() {
-      const voice = { connect() {}, disconnect() {}, start() { this.started = true; } };
+      const voice = { connect() {}, disconnect() { this.disconnected = true; }, start() { this.started = true; } };
       audioVoices.push(voice); return voice;
     }
     createGain() {
-      const gain = { gain: { value: 1 }, connect() {}, disconnect() {} };
+      const gain = { gain: { value: 1 }, connect() {}, disconnect() { this.disconnected = true; } };
       audioGains.push(gain); return gain;
     }
   }
@@ -81,18 +84,20 @@ function fixture({ cellSize = 50, audio = false } = {}) {
   for (const id of ['chessTopPlayer', 'chessBottomPlayer', 'profileOverlay', 'profileDrawer', 'profileSetupNotice', 'editProfileInput', 'editProfilePin', 'editProfileView', 'profileMainView', 'newProfileView', 'newProfileInput', 'newProfilePin', 'switchProfileView', 'switchPinSection', 'smokeSignalMessage', 'smokeSignalOverlay']) {
     const element = new Element(); elements.set(id, element); body.appendChild(element);
   }
+  const eventHandlers = new Map();
   const document = {
     body,
     getElementById: id => elements.get(id) || null,
     createElement: tag => new Element(tag),
     querySelectorAll: selector => selector === '#themeMenu button' ? elements.get('themeMenu').children : selector === '.profile-view' ? ['editProfileView', 'profileMainView', 'newProfileView', 'switchProfileView'].map(id => elements.get(id)) : [],
     querySelector: () => new Element(),
-    addEventListener() {}
+    addEventListener(event, callback) { if (!eventHandlers.has(event)) eventHandlers.set(event, []); eventHandlers.get(event).push(callback); }
   };
   class Audio {
-    constructor(src) { this.src = src; this.volume = 1; }
+    constructor(src) { this.src = src; this.volume = 1; this.paused = true; this.ended = false; }
     load() {}
-    play() { playedSounds.push({ src: this.src, volume: this.volume }); return Promise.resolve(); }
+    pause() { this.paused = true; }
+    play() { this.paused = false; playedSounds.push({ src: this.src, volume: this.volume }); return Promise.resolve(); }
     cloneNode() { return new Audio(this.src); }
   }
   let now = 100;
@@ -100,7 +105,7 @@ function fixture({ cellSize = 50, audio = false } = {}) {
   const context = vm.createContext({
     document, Audio, Image: class {}, Worker: class { postMessage() {} terminate() {} },
     window: { matchMedia: () => ({ matches: false }), AudioContext: audio ? AudioContext : undefined },
-    fetch: async () => ({ ok: true, arrayBuffer: async () => new ArrayBuffer(1) }),
+    fetch: async src => { audioRequests.push(src); return { ok: true, arrayBuffer: async () => new ArrayBuffer(1) }; },
     localStorage: { getItem: key => storage.get(key) || null, setItem: (key, value) => storage.set(key, String(value)), removeItem: key => storage.delete(key) },
     performance: { now: () => now },
     navigator: { clipboard: { writeText: async text => { storage.set('clipboard', text); } } },
@@ -131,7 +136,7 @@ function fixture({ cellSize = 50, audio = false } = {}) {
     }
     run('renderChessBoard();');
   }
-  return { run, move, start, position, animations, elements, body, storage, audioVoices, audioGains, playedSounds, setNow(value) { now = value; } };
+  return { run, move, start, position, animations, elements, body, storage, audioVoices, audioGains, audioContexts, audioRequests, playedSounds, dispatch(event) { (eventHandlers.get(event) || []).forEach(callback => callback()); }, setNow(value) { now = value; } };
 }
 const kings = [['e1', 'king', 'white'], ['e8', 'king', 'black']];
 const history = f => JSON.parse(f.run('JSON.stringify(chessMoveHistory)'));
@@ -384,4 +389,86 @@ test('existing named profiles remain usable and blank profile names are rejected
   f.run('createProfileFromDrawer();');
   assert.equal(f.run('currentProfile'), 'Moose');
   assert.equal(f.run('Object.hasOwn(profiles, "")'), false);
+});
+
+
+async function unlockResultAudio(f) {
+  f.dispatch('pointerdown');
+  await f.run('Promise.all([...gameResultSoundBuffers.values()])');
+}
+
+test('result sounds replay successive wins, losses and a final match with fresh voices and cached buffers', async () => {
+  const f = fixture({ audio: true });
+  await unlockResultAudio(f);
+  for (const result of ['win', 'loss', 'win', 'loss']) await f.run(`playGameResultSound("ai", "${result}")`);
+  const voices = f.audioVoices.filter(voice => voice.buffer && !voice.buffer.silent);
+  assert.equal(voices.length, 4);
+  assert.equal(new Set(voices).size, 4);
+  assert.equal(voices.every(voice => voice.started), true);
+  assert.deepEqual(f.audioRequests, ['img/win.mp3', 'img/loss.mp3']);
+  assert.deepEqual(f.audioGains.map(gain => gain.gain.value), [1, 0.5, 1, 0.5]);
+  voices[0].onended();
+  assert.equal(voices[0].disconnected, true);
+  assert.equal(f.audioGains[0].disconnected, true);
+});
+
+test('result playback recovers from interrupted audio and later gestures resume the same context', async () => {
+  const f = fixture({ audio: true });
+  await unlockResultAudio(f);
+  const context = f.audioContexts[0];
+  context.state = 'interrupted';
+  f.dispatch('click');
+  await f.run('playGameResultSound("ai", "win")');
+  context.state = 'suspended';
+  await f.run('playGameResultSound("ai", "loss")');
+  assert.equal(f.audioContexts.length, 1);
+  assert.equal(context.state, 'running');
+  assert.equal(context.resumeCount, 3);
+  assert.equal(f.audioVoices.filter(voice => voice.buffer && !voice.buffer.silent).length, 2);
+});
+
+test('muted games and drawn rounds create no result voices', async () => {
+  const f = fixture({ audio: true });
+  await unlockResultAudio(f);
+  await f.run('playGameResultSound("ai", "draw");');
+  f.run('soundEnabled = false');
+  await f.run('playGameResultSound("ai", "loss");');
+  await f.run('playGameResultSound("local", "win");');
+  assert.equal(f.audioVoices.filter(voice => voice.buffer && !voice.buffer.silent).length, 0);
+});
+
+test('HTML fallback rewinds and reuses the primary player for successive result sounds', async () => {
+  const f = fixture();
+  f.run('winSound.currentTime = 3; winSound.muted = true;');
+  await f.run('playGameResultSound("ai", "win")');
+  await f.run('playGameResultSound("ai", "win")');
+  await f.run('playGameResultSound("ai", "loss")');
+  assert.deepEqual(f.playedSounds.map(sound => sound.src), ['img/win.mp3', 'img/win.mp3', 'img/loss.mp3']);
+  assert.equal(f.run('winSound.currentTime'), 0);
+  assert.equal(f.run('winSound.muted'), false);
+});
+
+test('failed result-buffer decoding falls back to the warmed primary player', async () => {
+  const f = fixture({ audio: true });
+  f.run('fetch = async () => { throw new Error("unavailable"); };');
+  await unlockResultAudio(f);
+  f.playedSounds.length = 0;
+  await f.run('playGameResultSound("ai", "loss")');
+  assert.deepEqual(f.playedSounds.map(sound => sound.src), ['img/loss.mp3']);
+  assert.equal(f.audioVoices.filter(voice => voice.buffer && !voice.buffer.silent).length, 0);
+});
+
+test('several real All Fives rounds and the match ending each reach the result audio path once', async () => {
+  const f = fixture({ audio: true });
+  f.run(fs.readFileSync(path.join(__dirname, '..', 'dominoes.js'), 'utf8'));
+  await unlockResultAudio(f);
+  f.run('dominoes.variant = "allfives"; dominoes.mode = "ai"; dominoes.targetScore = 100; dominoes.start();');
+  for (const [winner, final] of [[0, false], [1, false], [0, true]]) {
+    f.run(`dominoes.points = ${final ? '[95, 0]' : '[0, 0]'}; dominoes.hands = ${winner === 0 ? '[[], [[1, 2]]]' : '[[[1, 2]], []]'}; dominoes.finish(${winner}); dominoes.finish(${winner});`);
+    await f.run('Promise.resolve()');
+    if (!final) f.run('dominoes.nextRound()');
+  }
+  assert.equal(f.audioVoices.filter(voice => voice.buffer && !voice.buffer.silent).length, 3);
+  assert.equal(f.run('dominoes.active'), false);
+  assert.equal(f.run('getDominoesScores().variants.allfives.ai.win'), 1);
 });
