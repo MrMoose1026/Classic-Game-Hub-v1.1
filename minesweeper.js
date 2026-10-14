@@ -262,7 +262,7 @@ const minesweeper = (function MinesweeperFactory() {
       s.won = false;
       s.exploded = i;
       s.failures++;
-      playGameResultSound("ai", "loss");
+      playSound(boomSound);
     } else {
       const shown = new Set(s.revealed), flags = new Set(s.flags), stack = [i];
       while (stack.length) {
@@ -282,9 +282,23 @@ const minesweeper = (function MinesweeperFactory() {
           sessionStore.completed[s.key] ||= { seconds: s.seconds, failures: s.failures };
           unlockAchievement("daily-deminer");
           checkDailyDuoAchievement(s.day);
-        } else {
-          sessionStore.freeCompleted++;
-        }
+        
+} else {
+  sessionStore.freeCompleted++;
+
+  sessionStore.freeBests ||= {};
+
+  const previousBest =
+    sessionStore.freeBests[s.difficulty];
+
+  if (
+    !Number.isFinite(previousBest) ||
+    s.seconds < previousBest
+  ) {
+    sessionStore.freeBests[s.difficulty] = s.seconds;
+  }
+}
+
         unlockAchievement("first-sweep");
         playGameResultSound("ai", "win");
       }

@@ -5,6 +5,8 @@ const dropSound = new Audio("img/drop.mp3");
 const blockSound = new Audio("img/block.mp3");
 const tapSound = new Audio("img/tap.mp3");
 const wrongSound = new Audio("img/wrong.mp3");
+const boomSound = new Audio("img/boom.mp3");
+boomSound.volume = 0.5;
 
 // Preload reusable sound players.
 const gameSoundPools = new Map();
@@ -68,7 +70,7 @@ function warmGameSounds() {
 
 [
   clickSound, winSound, dropSound,
-  blockSound, tapSound, wrongSound
+  blockSound, tapSound, wrongSound, boomSound
 ].forEach(preloadGameSound);
 
 document.addEventListener("pointerdown", warmGameSounds, {
@@ -853,12 +855,55 @@ function switchProfile(name) {
   else requirePlayerProfile();
 }
 
+
+function getPuzzleStats(game) {
+  const profile = profiles[currentProfile] || {};
+  const data = profile[`${game}Data`] || {};
+
+  const dailyTotal = Object.keys(data.completed || {}).length;
+  const freeTotal = Number(data.freeCompleted) || 0;
+
+  // Minesweeper already saves failed attempts in its sessions.
+  const lossesTotal = game === "minesweeper"
+    ? Object.values(data.sessions || {}).reduce(
+        (total, session) => total + (Number(session.failures) || 0),
+        0
+      )
+    : 0;
+
+  // Baselines will let us reset statistics later
+  // without deleting daily completion history.
+  const baseline = data.statsBaseline || {};
+
+  const daily = Math.max(0, dailyTotal - (baseline.daily || 0));
+  const free = Math.max(0, freeTotal - (baseline.free || 0));
+  const losses = Math.max(0, lossesTotal - (baseline.losses || 0));
+
+  const wins = daily + free;
+
+  return {
+    daily,
+    free,
+    wins,
+    losses,
+    played: wins + losses
+  };
+}
+
+
 function getGamesPlayed() {
-  return getStatGames().reduce(
+  const classicGames = getStatGames().reduce(
     (total, [, scores]) => total + countCompletedGames(scores),
     0
   );
+
+  const sudokuGames = getPuzzleStats("sudoku").played;
+  const minesweeperGames = getPuzzleStats("minesweeper").played;
+
+  return classicGames + sudokuGames + minesweeperGames;
 }
+
+
 
 function getFavoriteGame() {
   let favorite = "None";
@@ -873,11 +918,147 @@ function getFavoriteGame() {
     }
   }
 
+  for (const [name, game] of [
+    ["Sudoku", "sudoku"],
+    ["Minesweeper", "minesweeper"]
+  ]) {
+    const played = getPuzzleStats(game).played;
+
+    if (played > mostPlayed) {
+      mostPlayed = played;
+      favorite = name;
+    }
+  }
+
   return favorite;
 }
 
 
+
 //STATISTICS
+
+
+function getPuzzleStatsCardHTML(game) {
+  const stats = getPuzzleStats(game);
+  const isMinesweeper = game === "minesweeper";
+  const name = isMinesweeper ? "Minesweeper" : "Sudoku";
+  const data = profiles[currentProfile]?.[`${game}Data`] || {};
+
+  const difficulties = isMinesweeper
+    ? ["easy", "medium", "hard"]
+    : ["easy", "medium", "hard", "expert"];
+
+  const best = {};
+  const records = Object.entries(data.completed || {});
+
+  let cleanDaily = 0;
+  let assistedDaily = 0;
+
+  for (const [key, record] of records) {
+    if (!record) continue;
+
+    const difficulty = key.split(":").pop();
+    const seconds = Number(record.seconds);
+
+    if (!isMinesweeper) {
+      if (Number(record.hints) === 0) {
+        cleanDaily++;
+      } else if (Number(record.hints) > 0) {
+        assistedDaily++;
+      }
+
+      // A hint-assisted or previously assisted
+      // daily puzzle cannot set a personal best.
+      if (
+        Number(record.hints) !== 0 ||
+        record.everAssisted
+      ) continue;
+    }
+
+    if (
+      !difficulties.includes(difficulty) ||
+      !Number.isFinite(seconds) ||
+      seconds < 0
+    ) continue;
+
+    if (
+      best[difficulty] === undefined ||
+      seconds < best[difficulty]
+    ) {
+      best[difficulty] = seconds;
+    }
+  }
+
+  const formatTime = seconds =>
+    seconds === undefined
+      ? "—"
+      : `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+
+  const winRate = stats.played
+    ? Math.round(stats.wins / stats.played * 100)
+    : 0;
+
+  return `
+    <div class="stat-card">
+      <h3>${name}</h3>
+
+      <p>${isMinesweeper
+        ? "Minefields cleared"
+        : "Puzzles solved"}: ${stats.wins}</p>
+
+      ${isMinesweeper ? `
+        <p>Minefields lost: ${stats.losses}</p>
+        <p>Total attempts: ${stats.played}</p>
+        <p>Win rate: ${winRate}%</p>
+      ` : `
+        <p>Daily clean completions: ${cleanDaily}</p>
+        <p>Daily assisted completions: ${assistedDaily}</p>
+      `}
+
+      <div class="stat-matchups">
+        <div class="stat-matchup">
+          <h4>Daily</h4>
+          <p>Completed: ${stats.daily}</p>
+        </div>
+        <div class="stat-matchup">
+          <h4>Free Play</h4>
+          <p>Completed: ${stats.free}</p>
+        </div>
+      </div>
+
+      <h4>${isMinesweeper
+  ? "Best Daily Times"
+  : "Best Clean Daily Times"}</h4>
+
+${difficulties.map(difficulty => `
+  <p>${capitalize(difficulty)}:
+    ${formatTime(best[difficulty])}
+  </p>
+`).join("")}
+
+<h4>${isMinesweeper
+  ? "Best Free Play Times"
+  : "Best Clean Free Play Times"}</h4>
+
+${difficulties.map(difficulty => `
+  <p>${capitalize(difficulty)}:
+    ${Number.isFinite(data.freeBests?.[difficulty])
+      ? formatTime(data.freeBests[difficulty])
+      : "—"}
+  </p>
+`).join("")}
+
+      ${!isMinesweeper ? `
+        <small>
+          Only hint-free, never-assisted daily puzzles
+          qualify for personal bests.
+        </small>
+      ` : ""}
+    </div>
+  `;
+}
+
+
 function showStatistics() {
   showAppTitle();
 
@@ -903,6 +1084,10 @@ function showStatistics() {
     </div>
   `).join("");
 
+  const puzzleCards = ["sudoku", "minesweeper"]
+    .map(getPuzzleStatsCardHTML)
+    .join("");
+
   setGameAreaContent(`
     <h2><span id="statisticsProfileName"></span>'s Statistics</h2>
 
@@ -912,6 +1097,7 @@ function showStatistics() {
 
       <div class="stat-grid">
         ${cards}
+        ${puzzleCards}
       </div>
     </div>
   `);

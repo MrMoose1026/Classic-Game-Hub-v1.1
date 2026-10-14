@@ -72,13 +72,44 @@ const sudoku = (() => {
     if(!session) { const seed=mode==='daily'?'andy-v1:'+key:'free:'+Date.now()+':'+Math.random(); const g=generate(seed,difficulty); session={...g, key, mode, difficulty, day, values:g.puzzle.slice(), notes:Array.from({length:81},()=>[]), seconds:0, hints:0, done:false}; }
     selected=-1; notesMode=false; history=[];
     setGameAreaContent(`<section class="sudoku-game"><h2>${mode==='daily'?'Daily Sudoku · Andy':'Sudoku'}</h2><p>${difficulty[0].toUpperCase()+difficulty.slice(1)}${mode==='daily'?' · '+session.day:''}</p><p id="sudokuStatus" role="status" aria-live="polite"></p><div id="sudokuBoard" class="sudoku-board" role="group" aria-label="Sudoku board"></div><div class="sudoku-keypad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button onclick="sudoku.input(${n})">${n}</button>`).join('')}</div><div class="sudoku-tools"><button onclick="sudoku.input(0)">Erase</button><button id="sudokuNotes" onclick="sudoku.toggleNotes()">Notes: Off</button><button onclick="sudoku.undo()">Undo</button><button onclick="sudoku.check()">Check</button><button onclick="sudoku.hint()">Hint</button><button onclick="sudoku.choose('${mode}')">Difficulty</button>${mode==='free'?`<button onclick="sudoku.newPuzzle()">New Puzzle</button>`:''}</div><p>Tap a cell, then a number. Keyboard: 1–9, arrows, Backspace, N for notes.</p><p>Progress saves automatically. Returning to menu pauses your puzzle.</p></section>`);
+    
+if (
+  mode === "daily" &&
+  session.done &&
+  session.hints > 0
+) {
+  const retryButton = document.createElement("button");
+  retryButton.textContent = "Retry Without Hints";
+  retryButton.onclick = retryDailyClean;
+
+  document.querySelector(".sudoku-tools")
+    .appendChild(retryButton);
+}
+
     render(); save(); timer=setInterval(()=> { if(session && !session.done && !document.hidden) { session.seconds++; status(); if(session.seconds%10===0) save(); } },1000);
   }
 
-  function status(message='') {
-    const el=document.getElementById('sudokuStatus'); if(!el || !session) return;
-    el.textContent=(session.done?'✓ Puzzle complete! ':message?message+' · ':'')+`${Math.floor(session.seconds/60)}:${String(session.seconds%60).padStart(2,'0')} · Hints: ${session.hints}`;
+  
+function status(message = '') {
+  const el = document.getElementById('sudokuStatus');
+  if (!el || !session) return;
+
+  let result = "";
+
+  if (session.done) {
+    result = session.hints > 0
+      ? "💡 Assisted Complete!"
+      : "🏆 Clean Complete!";
+  } else if (session.hints > 0) {
+    result = "💡 Assisted Run";
   }
+
+  const time = `${Math.floor(session.seconds / 60)}:${String(session.seconds % 60).padStart(2, '0')}`;
+
+  el.textContent =
+    `${result}${message ? " · " + message : ""} · ${time} · Hints: ${session.hints}`;
+}
+
 
   function render() {
     const board=document.getElementById('sudokuBoard'); if(!board || !session) return;
@@ -100,17 +131,54 @@ const sudoku = (() => {
     else { session.values[selected]=n; session.notes[selected]=[]; }
     if(session.values.every((v,i)=>v===session.solution[i])) {
       session.done=true; const d=sessionStore;
-      if (session.mode === "daily") {
-  d.completed[session.key] ||= {
+      
+if (session.mode === "daily") {
+  const previous = d.completed[session.key];
+
+  const everAssisted =
+    (previous && (previous.hints > 0 || previous.everAssisted)) ||
+    session.hints > 0;
+
+  const newRecord = {
     seconds: session.seconds,
-    hints: session.hints
+    hints: session.hints,
+    everAssisted: Boolean(everAssisted)
   };
+
+  // Record first completion, or upgrade an assisted solve
+  // to a clean solve without counting it twice.
+  if (
+    !previous ||
+    (session.hints === 0 && previous.hints !== 0) ||
+    (session.hints === 0 &&
+      previous.hints === 0 &&
+      session.seconds < previous.seconds)
+  ) {
+    d.completed[session.key] = newRecord;
+  }
 
   unlockAchievement("andy-approved");
   checkDailyDuoAchievement(session.day);
+
 } else {
   d.freeCompleted++;
+
+  // Free Play personal bests require zero hints.
+  if (session.hints === 0) {
+    d.freeBests ||= {};
+
+    const previousBest = d.freeBests[session.difficulty];
+
+    if (
+      !Number.isFinite(previousBest) ||
+      session.seconds < previousBest
+    ) {
+      d.freeBests[session.difficulty] = session.seconds;
+    }
+  }
 }
+
+
       playGameResultSound('ai','win');
     }
     save(); render();
@@ -124,6 +192,23 @@ const sudoku = (() => {
   
   function hint() { if(!session||session.done)return; const i=selected>=0&&!session.puzzle[selected]&&session.values[selected]!==session.solution[selected]?selected:session.values.findIndex((v,i)=>v!==session.solution[i]); if(i<0)return; selected=i; notesMode=false; session.hints++; input(session.solution[i]); document.getElementById('sudokuNotes').textContent='Notes: Off'; }
   
+
+function retryDailyClean() {
+  if (
+    !session ||
+    session.mode !== "daily" ||
+    !session.done ||
+    session.hints === 0
+  ) return;
+
+  const difficulty = session.difficulty;
+
+  showConfirmation(
+    "Retry this daily Sudoku without hints? Your assisted completion will remain recorded until you finish.",
+    () => begin(difficulty, true)
+  );
+}
+
   function newPuzzle() { showConfirmation('Replace this free-play puzzle with a new one?',()=>begin(session.difficulty,true)); }
   document.addEventListener('keydown',e=> {
     if(!session||pendingGame!=='sudoku'||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||document.body.classList.contains('overlay-open')) return;

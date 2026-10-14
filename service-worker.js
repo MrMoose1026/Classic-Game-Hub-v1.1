@@ -1,4 +1,4 @@
-const CACHE_NAME = "cgh-v1.4.19"; 
+const CACHE_NAME = "cgh-v1.4.21"; 
 
 const FILES_TO_CACHE = [
   "./",
@@ -25,6 +25,7 @@ const FILES_TO_CACHE = [
   "./img/tile-soft.mp3",
   "./img/loss.mp3",
   "./img/dice.wav",
+  "./img/boom.mp3",
   "./img/Gwenchana.ttf",
   "./backgammon.js",
   "./img/icons/icon-192.png",
