@@ -2491,3 +2491,63 @@ button.game-card {
   margin: 24px 0;
   font-style: italic;
 }
+/* Minesweeper release: balanced menu rows and responsive minefield. */
+.menu > .game-grid:first-of-type { grid-template-columns:repeat(2,minmax(0,340px)); max-width:760px; }
+.menu > .game-grid:last-of-type {
+  display:flex; flex-wrap:wrap; justify-content:center; gap:24px;
+  width:min(95%,1100px); max-width:1100px;
+}
+.menu > .game-grid:last-of-type > .game-card { flex:0 1 300px; max-width:320px; }
+.mines-game { box-sizing:border-box; width:min(100%,1120px); margin:0 auto; padding:12px; text-align:center; }
+.mines-game > p { line-height:1.5; }
+.mines-game .mines-levels {
+  display:flex; flex-wrap:wrap; justify-content:center; gap:16px;
+  width:min(100%,820px); margin:18px auto;
+}
+.mines-game .mines-levels .game-card { flex:0 1 220px; min-height:140px; padding:14px; }
+.mines-game .mines-levels .game-card h2 { font-size:clamp(20px,3vw,26px); }
+.mines-game .mines-levels .game-card span { display:block; margin-top:8px; }
+.mines-scroll {
+  box-sizing:border-box; width:max-content; max-width:100%;
+  overflow-x:auto; overscroll-behavior-x:contain;
+  margin:16px auto; border:2px solid currentColor; border-radius:6px; background:#5b687a;
+}
+.mines-scroll:focus-visible { outline:3px solid #ffd875; outline-offset:3px; }
+.mines-board {
+  display:grid; grid-template-columns:repeat(var(--mines-cols),var(--mines-cell));
+  width:max-content; gap:1px; padding:3px; background:#5b687a; user-select:none;
+}
+.mines-board .mines-cell {
+  box-sizing:border-box; width:var(--mines-cell); height:var(--mines-cell);
+  min-width:0; min-height:0; margin:0; padding:0; border-radius:3px;
+  border:1px solid #75849a; font:800 clamp(15px,3vw,21px)/1 system-ui,sans-serif;
+  text-align:center; box-shadow:inset 0 2px 1px rgba(255,255,255,.18),inset 0 -2px 2px rgba(0,0,0,.22);
+  background:#36445a; color:#f5f7ff; touch-action:manipulation;
+}
+.mines-board .mines-cell:hover { transform:none; background:#465b73; }
+.mines-board .mines-cell.opened { background:#202936; border-color:#445163; box-shadow:none; }
+.mines-board .mines-cell.exploded { background:#a53539; }
+.mines-board .mines-cell.wrong-flag { color:#ff9a9a; }
+.mines-board .mines-cell.n1 { color:#71bcff; }
+.mines-board .mines-cell.n2 { color:#80dfa0; }
+.mines-board .mines-cell.n3 { color:#ff8d8d; }
+.mines-board .mines-cell.n4 { color:#bbb0ff; }
+.mines-board .mines-cell.n5 { color:#ffb26b; }
+.mines-board .mines-cell.n6 { color:#76e6e4; }
+.mines-board .mines-cell.n7 { color:#fafafa; }
+.mines-board .mines-cell.n8 { color:#f5d48b; }
+.mines-board .mines-cell:focus-visible { outline:3px solid #ffd875; outline-offset:-3px; }
+.mines-tools,.mines-actions { display:flex; flex-wrap:wrap; justify-content:center; gap:12px; margin:16px auto; }
+.mines-tools button,.mines-actions button { margin:0; }
+.mines-tools button.selected,.mines-tools button[aria-pressed="true"] { outline:3px solid #ffd875; outline-offset:2px; }
+@media (max-width:650px) {
+  .menu > .game-grid:first-of-type,.menu > .game-grid:last-of-type {
+    width:96%; gap:12px; margin:16px auto 0;
+  }
+  .menu > .game-grid:first-of-type { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .menu > .game-grid:last-of-type > .game-card { flex:0 0 calc(50% - 6px); max-width:none; }
+  .menu > .game-grid > .game-card { box-sizing:border-box; min-height:118px; padding:10px 6px; font-size:13px; }
+  .menu > .game-grid .game-card h2 { font-size:clamp(17px,4vw,24px); }
+  .mines-game .mines-levels .game-card { flex:0 0 calc(50% - 8px); min-height:112px; font-size:13px; }
+  .mines-game .mines-levels .game-card h2 { font-size:20px; }
+}

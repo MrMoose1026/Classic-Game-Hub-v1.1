@@ -107,6 +107,7 @@ const sudoku = (() => {
   };
 
   unlockAchievement("andy-approved");
+  checkDailyDuoAchievement(session.day);
 } else {
   d.freeCompleted++;
 }

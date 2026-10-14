@@ -566,7 +566,10 @@ const achievementDefinitions = {
     title: "Andy Approved",
     description: "Complete your first daily Sudoku.",
     icon: "🧩"
-  }
+  },
+  "first-sweep": { title: "Minefield Rookie", description: "Clear your first Minesweeper minefield.", icon: "💣" },
+  "daily-deminer": { title: "Daily Deminer", description: "Complete a daily Minesweeper challenge.", icon: "🚩" },
+  "daily-double": { title: "Double Duty", description: "Complete daily Sudoku and daily Minesweeper on the same day.", icon: "🏆" }
 };
 
 function unlockAchievement(id, name = currentProfile) {
@@ -589,14 +592,25 @@ showAchievementNotification(id);
 return true;
 }
 
+function checkDailyDuoAchievement(day) {
+  const profile = profiles[currentProfile];
+  if (!profile || !day) return;
+  const completed = data => Object.keys(data?.completed || {}).some(key => key.startsWith(day + ":"));
+  if (completed(profile.sudokuData) && completed(profile.minesweeperData)) unlockAchievement("daily-double");
+}
+const achievementToastQueue = [];
 let achievementToastTimer;
 
 function showAchievementNotification(id) {
+  if (!achievementDefinitions[id]) return;
+  achievementToastQueue.push(id);
+  if (!achievementToastTimer) displayNextAchievementToast();
+}
+function displayNextAchievementToast() {
+  const id = achievementToastQueue.shift();
+  if (!id) { achievementToastTimer = null; return; }
   const achievement = achievementDefinitions[id];
-  if (!achievement) return;
-
   let toast = document.getElementById("achievementToast");
-
   if (!toast) {
     toast = document.createElement("div");
     toast.id = "achievementToast";
@@ -606,23 +620,17 @@ function showAchievementNotification(id) {
     toast.setAttribute("aria-atomic", "true");
     document.body.appendChild(toast);
   }
-
-  clearTimeout(achievementToastTimer);
-
   toast.hidden = false;
   toast.classList.remove("fading");
-  toast.textContent =
-    `${achievement.icon} Achievement unlocked!\n` +
-    `${achievement.title}\n` +
-    achievement.description;
-
+  toast.textContent = `${achievement.icon} Achievement unlocked!\n${achievement.title}\n${achievement.description}`;
   achievementToastTimer = setTimeout(() => {
     toast.classList.add("fading");
-
     achievementToastTimer = setTimeout(() => {
       toast.hidden = true;
-    }, 1000);
-  }, 4000);
+      achievementToastTimer = null;
+      displayNextAchievementToast();
+    }, 900);
+  }, 3600);
 }
 
 function showAchievementsView() {
@@ -793,7 +801,7 @@ function deleteProfile(currentProfile) {
 }
 
 function actuallyDeleteProfile(currentProfile) {
-  if (pendingGame === "sudoku") returnToMainMenu();
+  if (pendingGame === "sudoku" || pendingGame === "minesweeper") returnToMainMenu();
   delete profiles[currentProfile];
 
   saveProfiles();
@@ -806,7 +814,7 @@ function actuallyDeleteProfile(currentProfile) {
 }
 
 function switchProfile(name) {
-  if (pendingGame === "sudoku") returnToMainMenu();
+  if (pendingGame === "sudoku" || pendingGame === "minesweeper") returnToMainMenu();
   currentProfile = name;
 
   ensureProfileExists(currentProfile);
@@ -1349,6 +1357,7 @@ function hasActiveMenuGame(game = pendingGame) {
 function showMenu() {
   const game = pendingGame;
   if (game === "sudoku") { sudoku.stop(); returnToMainMenu(); return; }
+  if (game === "minesweeper") { minesweeper.stop(); returnToMainMenu(); return; }
 
   if (!hasActiveMenuGame(game)) {
     returnToMainMenu();
@@ -1413,6 +1422,7 @@ function showMenu() {
 
 function returnToMainMenu() {
   if (typeof sudoku !== "undefined") sudoku.stop();
+  if (typeof minesweeper !== "undefined") minesweeper.stop();
   gameActive = false;
   connectGameActive = false;
   checkersGameActive = false;

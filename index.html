@@ -239,7 +239,10 @@ Sound: On
 
 <div class="menu">
 <h2>Daily Challenges</h2>
-<div class="game-grid"><button class="game-card" onclick="startSudoku('daily')"><h2>Sudoku</h2>Andy</button></div>
+<div class="game-grid">
+  <button class="game-card" onclick="startSudoku('daily')"><h2>Sudoku</h2>Andy</button>
+  <button class="game-card" onclick="startMinesweeper('daily')"><h2>Minesweeper</h2>Daily minefields</button>
+</div>
 <h2>Free Play</h2>
 <div class="game-grid">
   <div class="game-card" onclick="startGame('tic')"><h2>Tic-Tac-Toe </h2>Classic Tic-Tac-Toe</div>
@@ -249,6 +252,7 @@ Sound: On
   <div class="game-card" onclick="startGame('dominoes')"><h2>Dominoes</h2> Classic or All Fives</div>
   <div class="game-card" onclick="startGame('backgammon')"><h2>Backgammon</h2> Roll, race, and bear off</div>
   <button class="game-card" onclick="startSudoku('free')"><h2>Sudoku</h2>Unlimited puzzles</button>
+  <button class="game-card" onclick="startMinesweeper('free')"><h2>Minesweeper</h2>Clear the minefield</button>
 </div>
 
 </div>
@@ -296,6 +300,7 @@ Back to Menu
 <script src="dominoes.js"></script>
 <script src="backgammon.js"></script>
 <script src="sudoku.js"></script>
+<script src="minesweeper.js"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {

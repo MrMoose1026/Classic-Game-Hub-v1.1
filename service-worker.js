@@ -1,4 +1,4 @@
-const CACHE_NAME = "cgh-v1.4.18"; 
+const CACHE_NAME = "cgh-v1.4.19"; 
 
 const FILES_TO_CACHE = [
   "./",
@@ -7,6 +7,7 @@ const FILES_TO_CACHE = [
   "./state.js",
   "./ui.js",
   "./sudoku.js",
+  "./minesweeper.js",
   "./chess.js",
   "./stockfishAI.js",
   "./dominoes.js",
