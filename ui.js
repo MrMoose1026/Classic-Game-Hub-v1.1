@@ -683,6 +683,7 @@ function deleteProfile(currentProfile) {
 }
 
 function actuallyDeleteProfile(currentProfile) {
+  if (pendingGame === "sudoku") returnToMainMenu();
   delete profiles[currentProfile];
 
   saveProfiles();
@@ -695,6 +696,7 @@ function actuallyDeleteProfile(currentProfile) {
 }
 
 function switchProfile(name) {
+  if (pendingGame === "sudoku") returnToMainMenu();
   currentProfile = name;
 
   ensureProfileExists(currentProfile);
@@ -1236,6 +1238,7 @@ function hasActiveMenuGame(game = pendingGame) {
 
 function showMenu() {
   const game = pendingGame;
+  if (game === "sudoku") { sudoku.stop(); returnToMainMenu(); return; }
 
   if (!hasActiveMenuGame(game)) {
     returnToMainMenu();
@@ -1299,6 +1302,7 @@ function showMenu() {
 }
 
 function returnToMainMenu() {
+  if (typeof sudoku !== "undefined") sudoku.stop();
   gameActive = false;
   connectGameActive = false;
   checkersGameActive = false;

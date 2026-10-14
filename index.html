@@ -220,6 +220,10 @@ Sound: On
 </div>
 
 <div class="menu">
+<p class="andy-release">THE Andy Update</p>
+<h2>Dailies</h2>
+<div class="game-grid"><button class="game-card" onclick="startSudoku('daily')"><h2>Sudoku</h2>Andy</button></div>
+<h2>Free Play</h2>
 <div class="game-grid">
   <div class="game-card" onclick="startGame('tic')"><h2>Tic-Tac-Toe </h2>Classic Tic-Tac-Toe</div>
   <div class="game-card" onclick="startGame('connect4')"><h2>Connect Four</h2> Drop pieces and connect four</div>
@@ -227,6 +231,7 @@ Sound: On
   <div class="game-card" onclick="startGame('chess')"><h2>Chess</h2> Checkmate to win</div>
   <div class="game-card" onclick="startGame('dominoes')"><h2>Dominoes</h2> Classic or All Fives</div>
   <div class="game-card" onclick="startGame('backgammon')"><h2>Backgammon</h2> Roll, race, and bear off</div>
+  <button class="game-card" onclick="startSudoku('free')"><h2>Sudoku</h2>Unlimited puzzles</button>
 </div>
 
 </div>
@@ -273,6 +278,7 @@ Back to Menu
 <script src="script.js"></script>
 <script src="dominoes.js"></script>
 <script src="backgammon.js"></script>
+<script src="sudoku.js"></script>
 <script>
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
