@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -67,7 +67,7 @@ Settings
     Favorite Game: None
   </div>
 <br></br>
-<br></br>
+
   <button onclick="showProfileView('newProfileView')">
     New Profile
   </button>
@@ -84,8 +84,25 @@ Settings
     View Statistics
   </button>
 
+  <button onclick="showAchievementsView()">
+  Achievements
+</button>
+
   <button onclick="hideProfileDrawer()">
     Close
+  </button>
+</div>
+
+<div id="achievementsView" class="profile-view hidden">
+  <h2>Achievements</h2>
+
+  <p id="achievementsSummary"></p>
+  <div id="achievementsList"></div>
+
+  <p class="achievements-coming-soon">More coming soon!</p>
+
+  <button onclick="showProfileView('profileMainView')">
+    Back
   </button>
 </div>
 
@@ -101,6 +118,7 @@ Settings
   <button type="button" class="avatar-option" data-avatar="⭕">⭕</button>
   <button type="button" class="avatar-option" data-avatar="👑">👑</button>
 </div>
+
 <input id="newProfileInput" placeholder="Profile name">
 <input id="newProfilePin" type="password" inputmode="numeric" maxlength="3" placeholder="3-digit PIN"/>
 <button onclick="createProfileFromDrawer()">
@@ -220,8 +238,7 @@ Sound: On
 </div>
 
 <div class="menu">
-<p class="andy-release">THE Andy Update</p>
-<h2>Dailies</h2>
+<h2>Daily Challenges</h2>
 <div class="game-grid"><button class="game-card" onclick="startSudoku('daily')"><h2>Sudoku</h2>Andy</button></div>
 <h2>Free Play</h2>
 <div class="game-grid">

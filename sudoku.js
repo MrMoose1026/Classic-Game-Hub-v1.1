@@ -8,16 +8,20 @@ const sudoku = (() => {
     for (const c of seed) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
     return () => { h += 0x6D2B79F5; let t = Math.imul(h ^ h >>> 15, 1 | h); t ^= t + Math.imul(t ^ t >>> 7, 61 | t); return ((t ^ t >>> 14) >>> 0) / 4294967296; };
   }
+
   function shuffle(a, rng) { for (let i=a.length-1;i>0;i--) { const j=Math.floor(rng()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
   function candidates(board, i) {
     const r=Math.floor(i/9), c=i%9, used=new Set();
     for(let k=0;k<9;k++) { used.add(board[r*9+k]); used.add(board[k*9+c]); used.add(board[(Math.floor(r/3)*3+Math.floor(k/3))*9+Math.floor(c/3)*3+k%3]); }
     return [1,2,3,4,5,6,7,8,9].filter(n=>!used.has(n));
   }
+
   function countSolutions(board, limit=2) {
     const rows=Array(9).fill(0),cols=Array(9).fill(0),boxes=Array(9).fill(0);
     const box=i=>Math.floor(i/27)*3+Math.floor(i%9/3);
     for(let i=0;i<81;i++) if(board[i]) { const bit=1<<board[i],r=Math.floor(i/9),c=i%9,b=box(i); if((rows[r]|cols[c]|boxes[b])&bit)return 0;rows[r]|=bit;cols[c]|=bit;boxes[b]|=bit; }
+
     function solve(cap) {
       let index=-1,mask=0,best=10;
       for(let i=0;i<81;i++) if(!board[i]) { const m=1022&~(rows[Math.floor(i/9)]|cols[i%9]|boxes[box(i)]);if(!m)return 0;let n=0;for(let x=m;x;x&=x-1)n++;if(n<best){best=n;index=i;mask=m;if(n===1)break;} }
@@ -28,6 +32,7 @@ const sudoku = (() => {
     }
     return solve(limit);
   }
+
   function generate(seed, difficulty) {
     const rng=random(seed), order=()=>shuffle([0,1,2],rng);
     const groups=()=>order().flatMap(g=>order().map(x=>g*3+x));
@@ -41,10 +46,15 @@ const sudoku = (() => {
     }
     return { puzzle, solution };
   }
+
   function dateKey(d=new Date()) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+  
   function data() { return profiles[currentProfile].sudokuData ||= { sessions:{}, completed:{}, freeCompleted:0 }; }
+  
   function save() { if(session) { sessionStore.sessions[session.key]=session; saveProfiles(); } }
+  
   function stop() { clearInterval(timer); timer=null; save(); session=null; sessionStore=null; }
+  
   function choose(nextMode) {
     if(!requirePlayerProfile()) return;
     stop(); mode=nextMode; pendingGame='sudoku';
@@ -53,6 +63,7 @@ const sudoku = (() => {
     const completed=data().completed;
     setGameAreaContent(`<section class="sudoku-game"><h2>${mode==='daily'?'Daily Sudoku · Andy':'Sudoku · Free Play'}</h2><p>${mode==='daily'?dateKey()+' · One puzzle per difficulty each day.':'A fresh puzzle whenever you want.'}</p><p>Choose your difficulty</p><div class="game-grid">${Object.keys(levels).map(l=>`<button class="game-card" onclick="sudoku.begin('${l}')"><h2>${l[0].toUpperCase()+l.slice(1)}</h2>${mode==='daily'&&completed[dateKey()+':'+l]?'✓ Completed':'Play'}</button>`).join('')}</div><p>Difficulty increases as starting clues decrease. Harder puzzles may need advanced techniques.</p></section>`);
   }
+
   function begin(difficulty, fresh=false) {
     if(!levels[difficulty]) return;
     stop(); const day=dateKey(), key=mode==='daily'?day+':'+difficulty:'free:'+difficulty;
@@ -63,10 +74,12 @@ const sudoku = (() => {
     setGameAreaContent(`<section class="sudoku-game"><h2>${mode==='daily'?'Daily Sudoku · Andy':'Sudoku'}</h2><p>${difficulty[0].toUpperCase()+difficulty.slice(1)}${mode==='daily'?' · '+session.day:''}</p><p id="sudokuStatus" role="status" aria-live="polite"></p><div id="sudokuBoard" class="sudoku-board" role="group" aria-label="Sudoku board"></div><div class="sudoku-keypad">${[1,2,3,4,5,6,7,8,9].map(n=>`<button onclick="sudoku.input(${n})">${n}</button>`).join('')}</div><div class="sudoku-tools"><button onclick="sudoku.input(0)">Erase</button><button id="sudokuNotes" onclick="sudoku.toggleNotes()">Notes: Off</button><button onclick="sudoku.undo()">Undo</button><button onclick="sudoku.check()">Check</button><button onclick="sudoku.hint()">Hint</button><button onclick="sudoku.choose('${mode}')">Difficulty</button>${mode==='free'?`<button onclick="sudoku.newPuzzle()">New Puzzle</button>`:''}</div><p>Tap a cell, then a number. Keyboard: 1–9, arrows, Backspace, N for notes.</p><p>Progress saves automatically. Returning to menu pauses your puzzle.</p></section>`);
     render(); save(); timer=setInterval(()=> { if(session && !session.done && !document.hidden) { session.seconds++; status(); if(session.seconds%10===0) save(); } },1000);
   }
+
   function status(message='') {
     const el=document.getElementById('sudokuStatus'); if(!el || !session) return;
     el.textContent=(session.done?'✓ Puzzle complete! ':message?message+' · ':'')+`${Math.floor(session.seconds/60)}:${String(session.seconds%60).padStart(2,'0')} · Hints: ${session.hints}`;
   }
+
   function render() {
     const board=document.getElementById('sudokuBoard'); if(!board || !session) return;
     board.innerHTML=session.values.map((v,i)=> { const r=Math.floor(i/9),c=i%9, sr=Math.floor(selected/9),sc=selected%9;
@@ -75,8 +88,11 @@ const sudoku = (() => {
       return `<button class="sudoku-cell ${session.puzzle[i]?'given':''} ${related?'related':''} ${i===selected?'selected':''} ${duplicate?'conflict':''}" style="${c===2||c===5?'border-right-width:3px;':''}${r===2||r===5?'border-bottom-width:3px;':''}" aria-label="Row ${r+1}, column ${c+1}, ${v||'empty'}${session.puzzle[i]?', given':''}" aria-pressed="${i===selected}" onclick="sudoku.select(${i})">${v||`<span class="sudoku-pencil">${[1,2,3,4,5,6,7,8,9].map(n=>`<span>${session.notes[i].includes(n)?n:''}</span>`).join('')}</span>`}</button>`;
     }).join(''); status();
   }
+
   function select(i) { selected=i; render(); }
+  
   function snapshot() { history.push({values:session.values.slice(),notes:session.notes.map(n=>n.slice())}); }
+  
   function input(n) {
     if(!session || session.done || selected<0 || session.puzzle[selected]) return;
     snapshot();
@@ -84,15 +100,29 @@ const sudoku = (() => {
     else { session.values[selected]=n; session.notes[selected]=[]; }
     if(session.values.every((v,i)=>v===session.solution[i])) {
       session.done=true; const d=sessionStore;
-      if(session.mode==='daily') d.completed[session.key] ||= {seconds:session.seconds,hints:session.hints}; else d.freeCompleted++;
+      if (session.mode === "daily") {
+  d.completed[session.key] ||= {
+    seconds: session.seconds,
+    hints: session.hints
+  };
+
+  unlockAchievement("andy-approved");
+} else {
+  d.freeCompleted++;
+}
       playGameResultSound('ai','win');
     }
     save(); render();
   }
+
   function toggleNotes() { notesMode=!notesMode; const el=document.getElementById('sudokuNotes'); if(el)el.textContent='Notes: '+(notesMode?'On':'Off'); }
+  
   function undo() { if(!session||session.done||!history.length)return; Object.assign(session,history.pop());save();render(); }
+  
   function check() { if(!session)return; const wrong=session.values.filter((v,i)=>v&&v!==session.solution[i]).length; status(wrong?`${wrong} incorrect ${wrong===1?'entry':'entries'}`:'No incorrect entries so far'); }
+  
   function hint() { if(!session||session.done)return; const i=selected>=0&&!session.puzzle[selected]&&session.values[selected]!==session.solution[selected]?selected:session.values.findIndex((v,i)=>v!==session.solution[i]); if(i<0)return; selected=i; notesMode=false; session.hints++; input(session.solution[i]); document.getElementById('sudokuNotes').textContent='Notes: Off'; }
+  
   function newPuzzle() { showConfirmation('Replace this free-play puzzle with a new one?',()=>begin(session.difficulty,true)); }
   document.addEventListener('keydown',e=> {
     if(!session||pendingGame!=='sudoku'||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||document.body.classList.contains('overlay-open')) return;
@@ -103,4 +133,5 @@ const sudoku = (() => {
   });
   return {choose,begin,stop,input,select,toggleNotes,undo,check,hint,newPuzzle,generate,countSolutions,dateKey};
 })();
+
 function startSudoku(mode) { sudoku.choose(mode); }

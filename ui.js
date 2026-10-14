@@ -1,4 +1,4 @@
-let confirmationAction = null;
+let confirmationAction = null; 
 const clickSound = new Audio("img/click.mp3");
 const winSound = new Audio("img/win.mp3");
 const dropSound = new Audio("img/drop.mp3");
@@ -559,6 +559,116 @@ if (!profiles[name].chessScores.local) {
 }
 
  saveProfiles();
+}
+// ACHIEVEMENTS
+const achievementDefinitions = {
+  "andy-approved": {
+    title: "Andy Approved",
+    description: "Complete your first daily Sudoku.",
+    icon: "🧩"
+  }
+};
+
+function unlockAchievement(id, name = currentProfile) {
+  if (!Object.hasOwn(achievementDefinitions, id)) return false;
+
+  const profile = profiles[name];
+  if (!profile) return false;
+
+  profile.achievements ||= {};
+
+  // Each achievement can only unlock once per profile.
+  if (Object.hasOwn(profile.achievements, id)) return false;
+
+  profile.achievements[id] = {
+    unlockedAt: new Date().toISOString()
+  };
+
+  saveProfiles();
+showAchievementNotification(id);
+return true;
+}
+
+let achievementToastTimer;
+
+function showAchievementNotification(id) {
+  const achievement = achievementDefinitions[id];
+  if (!achievement) return;
+
+  let toast = document.getElementById("achievementToast");
+
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "achievementToast";
+    toast.className = "achievement-toast";
+    toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", "polite");
+    toast.setAttribute("aria-atomic", "true");
+    document.body.appendChild(toast);
+  }
+
+  clearTimeout(achievementToastTimer);
+
+  toast.hidden = false;
+  toast.classList.remove("fading");
+  toast.textContent =
+    `${achievement.icon} Achievement unlocked!\n` +
+    `${achievement.title}\n` +
+    achievement.description;
+
+  achievementToastTimer = setTimeout(() => {
+    toast.classList.add("fading");
+
+    achievementToastTimer = setTimeout(() => {
+      toast.hidden = true;
+    }, 1000);
+  }, 4000);
+}
+
+function showAchievementsView() {
+  if (!requirePlayerProfile()) return;
+
+  const earned = profiles[currentProfile].achievements || {};
+  const definitions = Object.entries(achievementDefinitions);
+  const list = document.getElementById("achievementsList");
+
+  list.replaceChildren();
+
+  let unlockedCount = 0;
+
+  for (const [id, achievement] of definitions) {
+    const unlocked = Object.hasOwn(earned, id);
+    if (unlocked) unlockedCount++;
+
+    const card = document.createElement("article");
+    card.className =
+      "achievement-card " + (unlocked ? "unlocked" : "locked");
+
+    const title = document.createElement("h3");
+    title.textContent = `${achievement.icon} ${achievement.title}`;
+
+    const description = document.createElement("p");
+    description.textContent = achievement.description;
+
+    const status = document.createElement("p");
+    status.className = "achievement-status";
+
+    if (unlocked) {
+      const date = new Date(earned[id].unlockedAt);
+      status.textContent =
+        `🏆 Unlocked · ${date.toLocaleDateString()}`;
+    } else {
+      status.textContent = "🔒 Locked";
+    }
+
+    card.append(title, description, status);
+    list.appendChild(card);
+  }
+
+  document.getElementById("achievementsSummary").textContent =
+    `Unlocked: ${unlockedCount} / ${definitions.length}`;
+
+  showProfileView("achievementsView");
 }
 
 function saveProfiles() {
