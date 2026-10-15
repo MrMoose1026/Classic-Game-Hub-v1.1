@@ -6,6 +6,8 @@ const blockSound = new Audio("img/block.mp3");
 const tapSound = new Audio("img/tap.mp3");
 const wrongSound = new Audio("img/wrong.mp3");
 const boomSound = new Audio("img/boom.mp3");
+const achievementSound = new Audio("img/achieve.mp3");
+achievementSound.volume = 0.55;
 boomSound.volume = 0.5;
 
 // Preload reusable sound players.
@@ -70,7 +72,7 @@ function warmGameSounds() {
 
 [
   clickSound, winSound, dropSound,
-  blockSound, tapSound, wrongSound, boomSound
+  blockSound, tapSound, wrongSound, boomSound, achievementSound
 ].forEach(preloadGameSound);
 
 document.addEventListener("pointerdown", warmGameSounds, {
@@ -562,36 +564,143 @@ if (!profiles[name].chessScores.local) {
 
  saveProfiles();
 }
-// ACHIEVEMENTS
+// ACHIEVEMENTS — milestones and dates live with the player's existing stats.
 const achievementDefinitions = {
-  "andy-approved": {
-    title: "Andy Approved",
-    description: "Complete your first daily Sudoku.",
-    icon: "🧩"
-  },
-  "first-sweep": { title: "Minefield Rookie", description: "Clear your first Minesweeper minefield.", icon: "💣" },
-  "daily-deminer": { title: "Daily Deminer", description: "Complete a daily Minesweeper challenge.", icon: "🚩" },
-  "daily-double": { title: "Double Duty", description: "Complete daily Sudoku and daily Minesweeper on the same day.", icon: "🏆" }
+  "andy-approved": { title: "Andy Approved", description: "Complete your first daily Sudoku.", icon: "🧩", group: "Challenges" },
+  "first-sweep": { title: "Minefield Rookie", description: "Clear your first Minesweeper minefield.", icon: "💣", group: "Challenges" },
+  "daily-deminer": { title: "Daily Deminer", description: "Complete a daily Minesweeper challenge.", icon: "🚩", group: "Challenges" },
+  "daily-double": { title: "Double Duty", description: "Complete daily Sudoku and Minesweeper on the same day.", icon: "🏆", group: "Challenges" },
+  "cgh-grandmaster": { title: "CGH Grandmaster", description: "Defeat Stockfish on Expert difficulty in Chess.", icon: "👑", group: "Challenges" }
 };
 
-function unlockAchievement(id, name = currentProfile) {
-  if (!Object.hasOwn(achievementDefinitions, id)) return false;
+const achievementGameRegistry = new Map();
+const achievementTiers = [
+  { count: 10, label: "Rookie", icon: "🥉" },
+  { count: 50, label: "Experienced", icon: "🥈" },
+  { count: 100, label: "Veteran", icon: "🥇" },
+  { count: 500, label: "Master", icon: "💎" },
+  { count: 1000, label: "Legend", icon: "👑" }
+];
 
+// Register a future game with an ID, title, and getCompleted(profile, name).
+// Milestones are derived from the game's real saved results, not a second counter.
+function registerAchievementGame(config) {
+  if (!config || !/^[a-z0-9-]+$/.test(config.id) || !config.title ||
+      achievementGameRegistry.has(config.id)) return false;
+  const getCompleted = typeof config.getCompleted === "function"
+    ? config.getCompleted
+    : (profile, name) => config.puzzle
+      ? getPuzzleStats(config.id, name).played
+      : countCompletedGames(profile[config.scoresKey]);
+  const game = { id: config.id, title: config.title, icon: config.icon || "🎮", getCompleted };
+  achievementGameRegistry.set(config.id, game);
+  for (const tier of achievementTiers) {
+    achievementDefinitions[config.id + "-" + tier.label.toLowerCase()] = {
+      title: config.title + " " + tier.label,
+      description: "Complete " + tier.count.toLocaleString() + " " + config.title + " games. Wins, losses, and draws all count.",
+      icon: tier.icon,
+      group: "Experience",
+      target: tier.count,
+      current: (profile, name) => game.getCompleted(profile, name)
+    };
+  }
+  return true;
+}
+
+[
+  ["tic", "Tic-Tac-Toe", "❌", "ticScores"],
+  ["connect4", "Connect Four", "🔴", "connectScores"],
+  ["checkers", "Checkers", "🔴", "checkersScores"],
+  ["chess", "Chess", "♟️", "chessScores"],
+  ["dominoes", "Dominoes", "🁫", "dominoesScores"],
+  ["backgammon", "Backgammon", "🎲", "backgammonScores"]
+].forEach(([id, title, icon, scoresKey]) =>
+  registerAchievementGame({ id, title, icon, scoresKey })
+);
+registerAchievementGame({ id: "sudoku", title: "Sudoku", icon: "🔢", puzzle: true });
+registerAchievementGame({ id: "minesweeper", title: "Minesweeper", icon: "💣", puzzle: true });
+
+achievementDefinitions["well-rounded"] = {
+  title: "Well Rounded",
+  description: "You’ve experienced everything CGH has to offer (for now…)",
+  icon: "🌎",
+  group: "Exploration",
+  target: () => achievementGameRegistry.size,
+  current: (profile, name) => [...achievementGameRegistry.values()].filter(
+    game => game.getCompleted(profile, name) > 0
+  ).length
+};
+
+[
+  [3, "Getting Started", "🔥"],
+  [7, "One Week Wonder", "🔥"],
+  [10, "Double Digits", "🔥"],
+  [30, "CGH Devotee", "🏆"]
+].forEach(([days, title, icon]) => {
+  achievementDefinitions["streak-" + days] = {
+    title, icon, group: "Dedication",
+    description: "Complete at least one game on " + days + " consecutive days.",
+    target: days,
+    current: profile => getAchievementStreaks(profile).best
+  };
+});
+
+function localAchievementDay(date = new Date()) {
+  return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") +
+    "-" + String(date.getDate()).padStart(2, "0");
+}
+
+function achievementDayNumber(key) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return null;
+  const [year, month, day] = key.split("-").map(Number);
+  const utc = Date.UTC(year, month - 1, day);
+  const parsed = new Date(utc);
+  if (parsed.getUTCFullYear() !== year || parsed.getUTCMonth() + 1 !== month ||
+      parsed.getUTCDate() !== day) return null;
+  return Math.floor(utc / 86400000);
+}
+
+// Dated daily puzzle completions predate this feature. Recover their days
+// while leaving prior saved scores and unlocked achievements untouched.
+function backfillAchievementDays(profile) {
+  const previous = Array.isArray(profile.achievementDays) ? profile.achievementDays : [];
+  const days = new Set(previous.filter(day => achievementDayNumber(day) !== null));
+  for (const key of ["sudokuData", "minesweeperData"]) {
+    for (const entry of Object.keys(profile[key]?.completed || {})) {
+      const day = entry.split(":")[0];
+      if (achievementDayNumber(day) !== null) days.add(day);
+    }
+  }
+  const next = [...days].sort();
+  if (next.length === previous.length && next.every((day, i) => day === previous[i])) return false;
+  profile.achievementDays = next;
+  return true;
+}
+
+function getAchievementStreaks(profile) {
+  const days = (profile.achievementDays || []).map(achievementDayNumber)
+    .filter(day => day !== null).sort((a, b) => a - b);
+  let best = 0, run = 0, previous = null;
+  for (const day of days) {
+    if (day === previous) continue;
+    run = day === previous + 1 ? run + 1 : 1;
+    best = Math.max(best, run);
+    previous = day;
+  }
+  const today = achievementDayNumber(localAchievementDay());
+  return { best, current: previous === today || previous === today - 1 ? run : 0 };
+}
+
+function unlockAchievement(id, name = currentProfile, options = {}) {
+  if (!Object.hasOwn(achievementDefinitions, id)) return false;
   const profile = profiles[name];
   if (!profile) return false;
-
   profile.achievements ||= {};
-
-  // Each achievement can only unlock once per profile.
   if (Object.hasOwn(profile.achievements, id)) return false;
-
-  profile.achievements[id] = {
-    unlockedAt: new Date().toISOString()
-  };
-
+  profile.achievements[id] = { unlockedAt: new Date().toISOString() };
   saveProfiles();
-showAchievementNotification(id);
-return true;
+  if (!options.silent && name === currentProfile) showAchievementNotification(id);
+  return true;
 }
 
 function checkDailyDuoAchievement(day) {
@@ -600,6 +709,55 @@ function checkDailyDuoAchievement(day) {
   const completed = data => Object.keys(data?.completed || {}).some(key => key.startsWith(day + ":"));
   if (completed(profile.sudokuData) && completed(profile.minesweeperData)) unlockAchievement("daily-double");
 }
+
+function achievementProgress(id, def, profile, name) {
+  const earned = Object.hasOwn(profile.achievements || {}, id);
+  const target = typeof def.target === "function" ? def.target(profile, name) : def.target || 1;
+  const current = typeof def.current === "function" ? def.current(profile, name) : (earned ? 1 : 0);
+  return { target, current: Math.max(0, Number(current) || 0), earned };
+}
+
+function syncProfileAchievements(name = currentProfile, silent = true) {
+  const profile = profiles[name];
+  if (!profile) return;
+  let changed = backfillAchievementDays(profile);
+  if (!profile.achievements || typeof profile.achievements !== "object") {
+    profile.achievements = {};
+    changed = true;
+  }
+  const sudokuKeys = Object.keys(profile.sudokuData?.completed || {});
+  const minesKeys = Object.keys(profile.minesweeperData?.completed || {});
+  const existing = {
+    "andy-approved": sudokuKeys.length > 0,
+    "daily-deminer": minesKeys.length > 0,
+    "daily-double": sudokuKeys.some(s => minesKeys.some(m => m.split(":")[0] === s.split(":")[0])),
+    "first-sweep": getPuzzleStats("minesweeper", name).wins > 0
+  };
+  for (const [id, def] of Object.entries(achievementDefinitions)) {
+    if (Object.hasOwn(profile.achievements, id)) continue;
+    const { target, current } = achievementProgress(id, def, profile, name);
+    if (!(existing[id] || (typeof def.current === "function" && target > 0 && current >= target))) continue;
+    profile.achievements[id] = { unlockedAt: new Date().toISOString() };
+    changed = true;
+    if (!silent && name === currentProfile) showAchievementNotification(id);
+  }
+  if (changed) saveProfiles();
+}
+
+// Record actual finished results, including losses/draws/forfeits. Called only
+// after the game's usual stats are saved, never just on starting a session.
+function recordAchievementGame(id, name = currentProfile) {
+  const profile = profiles[name];
+  if (!profile || !achievementGameRegistry.has(id)) return;
+  profile.achievementDays ||= [];
+  const today = localAchievementDay();
+  if (!profile.achievementDays.includes(today)) {
+    profile.achievementDays.push(today);
+    saveProfiles(); // Save the day even when no achievement unlocks.
+  }
+  syncProfileAchievements(name, false);
+}
+
 const achievementToastQueue = [];
 let achievementToastTimer;
 
@@ -608,6 +766,7 @@ function showAchievementNotification(id) {
   achievementToastQueue.push(id);
   if (!achievementToastTimer) displayNextAchievementToast();
 }
+
 function displayNextAchievementToast() {
   const id = achievementToastQueue.shift();
   if (!id) { achievementToastTimer = null; return; }
@@ -624,7 +783,9 @@ function displayNextAchievementToast() {
   }
   toast.hidden = false;
   toast.classList.remove("fading");
-  toast.textContent = `${achievement.icon} Achievement unlocked!\n${achievement.title}\n${achievement.description}`;
+  toast.textContent = achievement.icon + " Achievement unlocked!\n" +
+    achievement.title + "\n" + achievement.description;
+  playSound(achievementSound);
   achievementToastTimer = setTimeout(() => {
     toast.classList.add("fading");
     achievementToastTimer = setTimeout(() => {
@@ -637,47 +798,52 @@ function displayNextAchievementToast() {
 
 function showAchievementsView() {
   if (!requirePlayerProfile()) return;
-
-  const earned = profiles[currentProfile].achievements || {};
+  syncProfileAchievements(currentProfile, true);
+  const profile = profiles[currentProfile];
   const definitions = Object.entries(achievementDefinitions);
   const list = document.getElementById("achievementsList");
-
   list.replaceChildren();
-
-  let unlockedCount = 0;
-
-  for (const [id, achievement] of definitions) {
-    const unlocked = Object.hasOwn(earned, id);
-    if (unlocked) unlockedCount++;
-
-    const card = document.createElement("article");
-    card.className =
-      "achievement-card " + (unlocked ? "unlocked" : "locked");
-
-    const title = document.createElement("h3");
-    title.textContent = `${achievement.icon} ${achievement.title}`;
-
-    const description = document.createElement("p");
-    description.textContent = achievement.description;
-
-    const status = document.createElement("p");
-    status.className = "achievement-status";
-
-    if (unlocked) {
-      const date = new Date(earned[id].unlockedAt);
-      status.textContent =
-        `🏆 Unlocked · ${date.toLocaleDateString()}`;
-    } else {
-      status.textContent = "🔒 Locked";
+  for (const group of ["Dedication", "Exploration", "Challenges", "Experience"]) {
+    const section = document.createElement("section");
+    section.className = "achievement-group";
+    const heading = document.createElement("h3");
+    heading.textContent = group;
+    section.appendChild(heading);
+    for (const [id, achievement] of definitions.filter(([, def]) => (def.group || "Challenges") === group)) {
+      const { target, current, earned } = achievementProgress(id, achievement, profile, currentProfile);
+      const card = document.createElement("article");
+      card.className = "achievement-card " + (earned ? "unlocked" : "locked");
+      const title = document.createElement("h4");
+      title.textContent = achievement.icon + " " + achievement.title;
+      const description = document.createElement("p");
+      description.textContent = achievement.description;
+      const bar = document.createElement("progress");
+      bar.className = "achievement-progress";
+      bar.max = Math.max(1, target);
+      bar.value = Math.min(target, current);
+      bar.setAttribute("aria-label", achievement.title + " progress");
+      const progressText = document.createElement("p");
+      progressText.className = "achievement-progress-text";
+      progressText.textContent = Math.min(target, current).toLocaleString() + " / " + target.toLocaleString();
+      const status = document.createElement("p");
+      status.className = "achievement-status";
+      if (earned) {
+        const when = profile.achievements[id]?.unlockedAt;
+        const date = when && !Number.isNaN(Date.parse(when)) ? new Date(when).toLocaleDateString() : "";
+        status.textContent = "🏆 Unlocked" + (date ? " · " + date : "");
+      } else {
+        status.textContent = "🔒 Locked";
+      }
+      card.append(title, description, bar, progressText, status);
+      section.appendChild(card);
     }
-
-    card.append(title, description, status);
-    list.appendChild(card);
+    list.appendChild(section);
   }
-
+  const unlocked = definitions.filter(([id]) => Object.hasOwn(profile.achievements, id)).length;
+  const streak = getAchievementStreaks(profile);
   document.getElementById("achievementsSummary").textContent =
-    `Unlocked: ${unlockedCount} / ${definitions.length}`;
-
+    "🏆 " + unlocked + " / " + definitions.length + " unlocked · 🔥 " +
+    streak.current + "-day streak (best: " + streak.best + ")";
   showProfileView("achievementsView");
 }
 
@@ -732,6 +898,7 @@ if (savedChessScores) {
 };
 ensureProfileExists(currentProfile);
 loadCurrentProfileScores();
+for (const name of Object.keys(profiles)) syncProfileAchievements(name, true);
 
 function renderProfileList() {
   const profileList =
@@ -856,8 +1023,8 @@ function switchProfile(name) {
 }
 
 
-function getPuzzleStats(game) {
-  const profile = profiles[currentProfile] || {};
+function getPuzzleStats(game, profileName = currentProfile) {
+  const profile = profiles[profileName] || {};
   const data = profile[`${game}Data`] || {};
 
   const dailyTotal = Object.keys(data.completed || {}).length;
@@ -1910,6 +2077,7 @@ function recordDominoesResult(winner, mode, name, variant = "classic") {
   scores[mode][result]++;
   scores.variants[variant][mode][result]++;
   saveProfiles();
+  recordAchievementGame("dominoes", name);
   updateProfileSummary();
 }
 
@@ -1926,8 +2094,10 @@ function getStatGames() {
 
 function countCompletedGames(scores) {
   return ["ai", "local"].reduce((total, mode) => {
-    const results = scores[mode];
-    return total + results.win + results.loss + results.draw;
+    const results = scores?.[mode] || {};
+    return total + ["win", "loss", "draw"].reduce(
+      (sum, result) => sum + Math.max(0, Number(results[result]) || 0), 0
+    );
   }, 0);
 }
 
@@ -1950,5 +2120,6 @@ function recordBackgammonResult(winner, mode, name) {
   scores[mode][winner === 0 ? "win" : "loss"]++;
 
   saveProfiles();
+  recordAchievementGame("backgammon", name);
   updateProfileSummary();
 }

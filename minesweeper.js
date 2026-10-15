@@ -304,6 +304,11 @@ const minesweeper = (function MinesweeperFactory() {
       }
     }
     save();
+    if (s.done && !s.achievementRecorded) {
+      s.achievementRecorded = true;
+      save();
+      recordAchievementGame("minesweeper");
+    }
     render();
   }
   function newPuzzle() {

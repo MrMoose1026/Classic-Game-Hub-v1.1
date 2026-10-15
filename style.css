@@ -2551,3 +2551,18 @@ button.game-card {
   .mines-game .mines-levels .game-card { flex:0 0 calc(50% - 8px); min-height:112px; font-size:13px; }
   .mines-game .mines-levels .game-card h2 { font-size:20px; }
 }
+
+/* Generated achievements: consistent, accessible progress in the profile drawer. */
+.achievement-group { margin: 22px 0; }
+.achievement-group > h3 { text-align: left; margin: 0 0 10px; font-size: 1.05rem; }
+.achievement-card { margin: 10px 0; padding: 12px; text-align: left; }
+.achievement-card h4 { margin: 0 0 8px; font-size: 1rem; }
+.achievement-card p { margin: 7px 0; overflow-wrap: anywhere; }
+.achievement-card.locked { opacity: 0.82; }
+.achievement-progress { display: block; width: 100%; height: 12px; margin: 12px 0 5px; accent-color: #ffd166; }
+.achievement-progress::-webkit-progress-bar { background: rgba(127, 127, 127, 0.35); border-radius: 8px; }
+.achievement-progress::-webkit-progress-value { background: #ffd166; border-radius: 8px; }
+.achievement-progress::-moz-progress-bar { background: #ffd166; border-radius: 8px; }
+.achievement-progress-text { font-size: 0.86rem; opacity: 0.9; font-variant-numeric: tabular-nums; }
+.achievement-card .achievement-status { margin-bottom: 0; font-size: 0.9rem; }
+#achievementsSummary { font-weight: 600; line-height: 1.5; }

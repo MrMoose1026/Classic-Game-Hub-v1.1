@@ -90,6 +90,7 @@ playGameResultSound(mode, result);
 
   profiles[currentProfile].checkersScores = checkersScores;
   saveProfiles();
+  recordAchievementGame("checkers");
 
   updateCheckersScoreboard();
 }

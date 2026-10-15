@@ -43,6 +43,7 @@ playGameResultSound(mode, result);
 
   profiles[currentProfile].ticScores = ticScores;
   saveProfiles();
+  recordAchievementGame("tic");
 
   updateTicScoreboard();
 }

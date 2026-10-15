@@ -181,7 +181,13 @@ if (session.mode === "daily") {
 
       playGameResultSound('ai','win');
     }
-    save(); render();
+    save();
+    if (session?.done && !session.achievementRecorded) {
+      session.achievementRecorded = true;
+      save();
+      recordAchievementGame("sudoku");
+    }
+    render();
   }
 
   function toggleNotes() { notesMode=!notesMode; const el=document.getElementById('sudokuNotes'); if(el)el.textContent='Notes: '+(notesMode?'On':'Off'); }

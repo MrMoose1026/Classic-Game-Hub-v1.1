@@ -612,6 +612,10 @@ playGameResultSound(mode, result);
 
   profiles[currentProfile].chessScores = chessScores;
   saveProfiles();
+  recordAchievementGame("chess");
+  if (mode === "ai" && chessDifficulty === "expert" && result === "win") {
+    unlockAchievement("cgh-grandmaster");
+  }
 
   updateChessScoreboard();
 }

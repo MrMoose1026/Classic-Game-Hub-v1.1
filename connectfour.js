@@ -91,6 +91,7 @@ playGameResultSound(mode, result);
 
   profiles[currentProfile].connectScores = connectScores;
   saveProfiles();
+  recordAchievementGame("connect4");
 
   updateConnectScoreboard();
 }
