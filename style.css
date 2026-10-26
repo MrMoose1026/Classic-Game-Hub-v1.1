@@ -14,6 +14,20 @@
     linear-gradient(145deg, #100d20, #080812 75%);
   color: #f8f7ff;
   font-family: inherit;
+  opacity: 1;
+  transition: opacity 650ms ease;
+}
+
+
+.welcome-screen.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .welcome-screen {
+    transition-duration: 0.01ms;
+  }
 }
 
 .welcome-screen.hidden {
@@ -185,7 +199,8 @@
 }
 
 .splash-screen {
-    position: fixed;
+  background: #080812;  
+  position: fixed;
     inset: 0;
     width: 100%;
     height: 100%;

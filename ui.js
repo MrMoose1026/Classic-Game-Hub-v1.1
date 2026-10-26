@@ -1936,6 +1936,109 @@ function hideConfirmation() {
   confirmationAction = null;
 }
 initializeAvatarPicker();
+
+
+/* WELCOME SCREEN PROFILE CREATION */
+let welcomeSelectedAvatar = "♟️";
+
+const welcomeAvatarPicker =
+  document.getElementById("welcomeAvatarPicker");
+
+const welcomeProfileForm =
+  document.getElementById("welcomeProfileForm");
+
+if (welcomeAvatarPicker) {
+  welcomeAvatarPicker.querySelectorAll(".welcome-avatar")
+    .forEach(button => {
+      button.addEventListener("click", () => {
+        welcomeSelectedAvatar = button.dataset.avatar;
+
+        welcomeAvatarPicker.querySelectorAll(".welcome-avatar")
+          .forEach(avatarButton => {
+            avatarButton.classList.toggle(
+              "selected-avatar",
+              avatarButton === button
+            );
+          });
+      });
+    });
+}
+
+if (welcomeProfileForm) {
+  welcomeProfileForm.addEventListener("submit", event => {
+    // Prevent the browser from reloading the page.
+    event.preventDefault();
+
+    const name = document
+      .getElementById("welcomePlayerName")
+      .value.trim();
+
+    const pin = document
+      .getElementById("welcomePlayerPin")
+      .value.trim();
+
+    const error = document.getElementById("welcomeError");
+
+    const showError = message => {
+      if (error) {
+        error.textContent = message;
+        error.classList.remove("hidden");
+      }
+    };
+
+    if (!name ||
+        ["__proto__", "constructor", "prototype"].includes(name)) {
+      showError("Please enter a valid player name.");
+      return;
+    }
+
+    if (!/^\d{3}$/.test(pin)) {
+      showError("Please enter a 3-digit PIN.");
+      return;
+    }
+
+    if (Object.hasOwn(profiles, name)) {
+      showError("That player name already exists. Please choose another.");
+      return;
+    }
+
+    // Create the profile using CGH's existing storage system.
+    currentProfile = name;
+    ensureProfileExists(name);
+
+    profiles[name].avatar = welcomeSelectedAvatar;
+    profiles[name].pin = pin;
+    profiles[name].setupComplete = true;
+
+    saveProfiles();
+    loadCurrentProfileScores();
+
+    // Refresh the existing profile UI.
+    updateProfileButton();
+    updateDrawerProfileDisplay();
+    updateProfileSummary();
+    renderProfileList();
+   
+    // Finish setup and gently fade into the arcade.
+    const welcomeScreen =
+      document.getElementById("welcomeScreen");
+
+    error?.classList.add("hidden");
+
+    if (welcomeScreen) {
+      welcomeScreen.classList.add("fade-out");
+
+      welcomeScreen.addEventListener("transitionend", event => {
+        if (event.propertyName !== "opacity") return;
+
+        welcomeScreen.classList.add("hidden");
+        welcomeScreen.classList.remove("fade-out");
+      }, { once: true });
+    }
+
+    finishProfileSetup();
+
+
 updateProfileButton();
 // Wait for every game script before calculating the profile summary.
 setTimeout(requirePlayerProfile, 0);
