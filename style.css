@@ -199,7 +199,8 @@
 }
 
 .splash-screen {
-  position: fixed;
+    background: #080812;
+    position: fixed;
     inset: 0;
     width: 100%;
     height: 100%;
