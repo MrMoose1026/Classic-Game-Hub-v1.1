@@ -8,6 +8,89 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  
+<!-- FIRST-TIME PLAYER WELCOME SCREEN -->
+<section id="welcomeScreen" class="welcome-screen">
+  <div class="welcome-card">
+
+    <div class="welcome-logo">🎮</div>
+
+    <p class="welcome-eyebrow">YOUR ARCADE AWAITS</p>
+
+    <h1>WELCOME TO<br>CLASSIC GAMES HUB</h1>
+
+    <p class="welcome-subtitle">
+      Your games. Your stats. Your legacy.
+    </p>
+
+    <div class="welcome-divider"></div>
+
+    <form id="welcomeProfileForm">
+
+      <label for="welcomePlayerName">
+        What should we call you?
+      </label>
+
+      <input
+        id="welcomePlayerName"
+        type="text"
+        maxlength="24"
+        placeholder="Enter your player name..."
+        autocomplete="nickname"
+        required
+      >
+
+      <label>Choose your avatar</label>
+
+      <div id="welcomeAvatarPicker" class="welcome-avatars">
+        <button type="button" class="welcome-avatar selected-avatar"
+          data-avatar="♟️" aria-label="Chess pawn">♟️</button>
+        <button type="button" class="welcome-avatar"
+          data-avatar="👑" aria-label="Crown">👑</button>
+        <button type="button" class="welcome-avatar"
+          data-avatar="🐉" aria-label="Dragon">🐉</button>
+        <button type="button" class="welcome-avatar"
+          data-avatar="🦊" aria-label="Fox">🦊</button>
+        <button type="button" class="welcome-avatar"
+          data-avatar="🤖" aria-label="Robot">🤖</button>
+        <button type="button" class="welcome-avatar"
+          data-avatar="👾" aria-label="Arcade alien">👾</button>
+      </div>
+
+      <label for="welcomePlayerPin">
+        Create a 3-digit PIN
+      </label>
+
+      <input
+        id="welcomePlayerPin"
+        type="password"
+        inputmode="numeric"
+        pattern="[0-9]{3}"
+        maxlength="3"
+        placeholder="•••"
+        autocomplete="new-password"
+        required
+      >
+
+      <p class="welcome-hint">
+        Your PIN helps protect your player profile.
+      </p>
+
+      <p id="welcomeError" class="welcome-error hidden"
+        role="alert"></p>
+
+      <button type="submit" class="welcome-create-button">
+        CREATE MY PROFILE <span>🚀</span>
+      </button>
+
+    </form>
+
+    <p class="welcome-footer">
+      INSERT COIN? NAH. THIS ARCADE IS YOURS.
+    </p>
+
+  </div>
+  
 <div id="splashScreen" class="splash-screen">
 
   <div class="splash-content">
@@ -37,6 +120,8 @@
     </div>
  </div>
   </div>
+</section>
+
 
 </div>
 <div class="container">

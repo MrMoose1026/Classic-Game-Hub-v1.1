@@ -1940,6 +1940,16 @@ updateProfileButton();
 // Wait for every game script before calculating the profile summary.
 setTimeout(requirePlayerProfile, 0);
 
+function showWelcomeScreen() {
+  if (hasPlayerProfile()) return;
+
+  const welcomeScreen = document.getElementById("welcomeScreen");
+
+  if (welcomeScreen) {
+    welcomeScreen.classList.remove("hidden");
+  }
+}
+
 // DOMINOES STATS AND SOUNDS
 const dominoTileSound = new Audio("img/tile-soft.mp3");
 dominoTileSound.volume = 0.35;
